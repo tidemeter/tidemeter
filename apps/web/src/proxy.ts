@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/",
+  "/t.js",
+  "/admin",
+  "/share",
+  "/_next",
+  "/favicon.ico",
+  "/icon",
+  "/apple-icon",
+];
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get("payload-token");
+  if (!token?.value) {
+    const loginUrl = new URL("/login", request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all paths except static files and Next.js internals.
+     * _next is also excluded via PUBLIC_PATHS for safety.
+     */
+    "/((?!_next/static|_next/image|favicon\\.ico|icon|apple-icon).*)",
+  ],
+};

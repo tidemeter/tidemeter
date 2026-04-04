@@ -1,0 +1,41 @@
+# TideMeter — Default Docker Compose (PostgreSQL)
+# Usage: docker compose -f docker/docker-compose.yml up
+
+services:
+  tidemeter:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3700:3000"
+    environment:
+      - DATABASE_URL=postgresql://tidemeter:tidemeter@postgres:5432/tidemeter
+      - ANALYTICS_DATABASE_URL=postgresql://tidemeter:tidemeter@postgres:5432/tidemeter
+      - ANALYTICS_DB_TYPE=postgresql
+      - PAYLOAD_SECRET=${PAYLOAD_SECRET:-change-me-in-production-at-least-32-chars}
+      - SESSION_SALT_SECRET=${SESSION_SALT_SECRET:-change-me-in-production}
+      - NEXT_PUBLIC_APP_URL=http://localhost:3700
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tidemeter
+      POSTGRES_PASSWORD: tidemeter
+      POSTGRES_DB: tidemeter
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - "5480:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tidemeter"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pg-data:

@@ -1,0 +1,43 @@
+{
+  "name": "@tidemeter/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo -p 3700",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "clean": "rm -rf .next .turbo",
+    "generate:types": "payload generate:types",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@payloadcms/db-postgres": "^3.81.0",
+    "@payloadcms/next": "^3.81.0",
+    "@payloadcms/richtext-lexical": "^3.81.0",
+    "@payloadcms/ui": "^3.81.0",
+    "@tidemeter/analytics": "workspace:*",
+    "@tidemeter/ui": "workspace:*",
+    "graphql": "^16.13.2",
+    "next": "^16.2.2",
+    "payload": "^3.81.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^2.15.4",
+    "sharp": "^0.33.5",
+    "ua-parser-js": "^2.0.9",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@tidemeter/tsconfig": "workspace:*",
+    "@types/node": "^22.19.16",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "sass": "^1.99.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
+  }
+}

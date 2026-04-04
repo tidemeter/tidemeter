@@ -1,0 +1,45 @@
+{
+  "name": "@tidemeter/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js"
+    },
+    "./postgres": {
+      "types": "./dist/adapters/postgres.d.ts",
+      "import": "./dist/adapters/postgres.js"
+    },
+    "./clickhouse": {
+      "types": "./dist/adapters/clickhouse.d.ts",
+      "import": "./dist/adapters/clickhouse.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "db:migrate": "drizzle-kit migrate",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.18.2",
+    "drizzle-orm": "^0.38.4",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "@tidemeter/tsconfig": "workspace:*",
+    "@types/node": "^22.19.16",
+    "drizzle-kit": "^0.30.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.2"
+  }
+}
