@@ -11,6 +11,7 @@ import { Teams } from "./payload/collections/teams";
 import { TeamMembers } from "./payload/collections/team-members";
 import { ApiKeys } from "./payload/collections/api-keys";
 import { Funnels } from "./payload/collections/funnels";
+import { migrations } from "./migrations";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,8 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URL || "",
     },
+    push: true,
+    prodMigrations: migrations,
   }),
 
   typescript: {

@@ -1,10 +1,30 @@
-import postgres from 'postgres';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import postgres from "postgres";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = path.resolve(__dirname, '../drizzle');
+
+/**
+ * Find the analytics SQL migration directory.
+ *
+ * Tries multiple paths so the same code works in:
+ *  - Development (relative to source file)
+ *  - Docker standalone (files copied to /app/packages/analytics/drizzle)
+ *  - Custom deployments (ANALYTICS_MIGRATIONS_DIR env override)
+ */
+function findMigrationsDir(): string {
+  const candidates = [
+    process.env.ANALYTICS_MIGRATIONS_DIR,
+    path.resolve(__dirname, "../drizzle"),
+    path.resolve(process.cwd(), "packages/analytics/drizzle"),
+  ].filter(Boolean) as string[];
+
+  for (const dir of candidates) {
+    if (fs.existsSync(dir)) return dir;
+  }
+  return candidates[0];
+}
 
 async function ensureMigrationsTable(sql: postgres.Sql): Promise<void> {
   await sql`CREATE SCHEMA IF NOT EXISTS analytics`;
@@ -24,27 +44,34 @@ async function getAppliedMigrations(sql: postgres.Sql): Promise<Set<string>> {
   return new Set(rows.map((r) => r.name));
 }
 
-function getMigrationFiles(): string[] {
-  if (!fs.existsSync(MIGRATIONS_DIR)) return [];
+function getMigrationFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
   return fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
     .sort();
 }
 
 export async function runMigrations(databaseUrl: string): Promise<void> {
+  const migrationsDir = findMigrationsDir();
   const sql = postgres(databaseUrl);
   try {
     await ensureMigrationsTable(sql);
 
     const applied = await getAppliedMigrations(sql);
-    const files = getMigrationFiles();
+    const files = getMigrationFiles(migrationsDir);
+
+    if (files.length === 0) {
+      console.warn(
+        `[migrate] No .sql files found (searched: ${migrationsDir})`,
+      );
+    }
 
     for (const file of files) {
       if (applied.has(file)) continue;
 
-      const filePath = path.join(MIGRATIONS_DIR, file);
-      const content = fs.readFileSync(filePath, 'utf-8');
+      const filePath = path.join(migrationsDir, file);
+      const content = fs.readFileSync(filePath, "utf-8");
 
       console.log(`[migrate] Applying ${file}...`);
       await sql.unsafe(content);
@@ -52,7 +79,7 @@ export async function runMigrations(databaseUrl: string): Promise<void> {
       console.log(`[migrate] Applied ${file}`);
     }
 
-    console.log('[migrate] All migrations applied.');
+    console.log("[migrate] All migrations applied.");
   } finally {
     await sql.end();
   }
