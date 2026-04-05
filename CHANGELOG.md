@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.2...tidemeter-v0.1.3) (2026-04-05)
+
+
+### Bug Fixes
+
+* initial migration ([6e22756](https://github.com/tidemeter/tidemeter/commit/6e2275677c19959bfdbd453b63f5c7daefc6d440))
+
 ## [0.1.2](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.1...tidemeter-v0.1.2) (2026-04-05)
 
 
