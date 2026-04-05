@@ -56,7 +56,15 @@ export const Users: CollectionConfig = {
     // Users can update their own profile; admins can update all
     update: ({ req }) => {
       const roles = req.user?.roles;
-      if (Array.isArray(roles) && roles.includes("admin")) return true;
+      const isAdmin = Array.isArray(roles) && roles.includes("admin");
+
+      if (isAdmin) return true;
+
+      const isReadOnlyDemoUser =
+        process.env.DEMO_MODE === "true" && req.user?.email === "demo@demo.com";
+
+      if (isReadOnlyDemoUser) return false;
+
       if (req.user) return { id: { equals: req.user.id } };
       return false;
     },

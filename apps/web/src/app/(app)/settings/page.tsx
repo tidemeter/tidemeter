@@ -18,5 +18,8 @@ export default async function SettingsPage() {
       }
     : null;
 
-  return <UserSettings user={user} />;
+  const isReadOnlyDemoUser =
+    process.env.DEMO_MODE === "true" && payloadUser?.email === "demo@demo.com";
+
+  return <UserSettings user={user} isReadOnly={isReadOnlyDemoUser} />;
 }

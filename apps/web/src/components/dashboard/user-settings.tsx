@@ -19,9 +19,10 @@ interface SettingsUser {
 
 interface UserSettingsProps {
   user: SettingsUser | null;
+  isReadOnly?: boolean;
 }
 
-export function UserSettings({ user }: UserSettingsProps) {
+export function UserSettings({ user, isReadOnly = false }: UserSettingsProps) {
   const router = useRouter();
 
   const [displayName, setDisplayName] = useState("");
@@ -57,6 +58,13 @@ export function UserSettings({ user }: UserSettingsProps) {
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    if (isReadOnly) {
+      setProfileMessage({
+        type: "error",
+        text: "Demo account changes are disabled in demo mode.",
+      });
+      return;
+    }
     setProfileMessage(null);
     setSavingProfile(true);
     try {
@@ -92,6 +100,13 @@ export function UserSettings({ user }: UserSettingsProps) {
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
+    if (isReadOnly) {
+      setPasswordMessage({
+        type: "error",
+        text: "Demo account changes are disabled in demo mode.",
+      });
+      return;
+    }
     if (!newPassword) {
       setPasswordMessage({
         type: "error",
@@ -189,6 +204,13 @@ export function UserSettings({ user }: UserSettingsProps) {
         </p>
       </div>
 
+      {isReadOnly && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
+          Demo account is read-only in demo mode. Profile and password changes
+          are disabled.
+        </div>
+      )}
+
       {/* Profile */}
       <Card>
         <CardHeader>
@@ -209,7 +231,8 @@ export function UserSettings({ user }: UserSettingsProps) {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                disabled={isReadOnly}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="Your name"
               />
             </div>
@@ -225,12 +248,13 @@ export function UserSettings({ user }: UserSettingsProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                disabled={isReadOnly}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="you@example.com"
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" disabled={savingProfile}>
+              <Button type="submit" disabled={isReadOnly || savingProfile}>
                 {savingProfile ? "Saving…" : "Save Profile"}
               </Button>
             </div>
@@ -258,7 +282,8 @@ export function UserSettings({ user }: UserSettingsProps) {
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                disabled={isReadOnly}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="••••••••"
               />
             </div>
@@ -274,12 +299,13 @@ export function UserSettings({ user }: UserSettingsProps) {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                disabled={isReadOnly}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 placeholder="••••••••"
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" disabled={savingPassword}>
+              <Button type="submit" disabled={isReadOnly || savingPassword}>
                 {savingPassword ? "Updating…" : "Update Password"}
               </Button>
             </div>

@@ -261,7 +261,33 @@ export function DashboardShell({
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-gray-900">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}>
+      <Sidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        footer={
+          <SidebarSection title="Resources">
+            <SidebarItem href="https://tidemeter.com/docs">
+              <BookIcon />
+              Documentation
+            </SidebarItem>
+
+            <SidebarItem href="https://github.com/tidemeter/tidemeter">
+              <CodeIcon />
+              GitHub
+            </SidebarItem>
+
+            <SidebarItem href="/api/health">
+              <ServerIcon />
+              System Status
+            </SidebarItem>
+
+            <SidebarItem href="https://github.com/tidemeter/tidemeter/releases">
+              <HeartIcon />
+              What&apos;s New
+            </SidebarItem>
+          </SidebarSection>
+        }
+      >
         <div className="space-y-1">
           <SidebarItem href="/" active={isHome}>
             <DashboardIcon />
@@ -294,28 +320,6 @@ export function DashboardShell({
             Settings
           </SidebarItem>
         </div>
-
-        <SidebarSection title="Resources">
-          <SidebarItem href="https://tidemeter.com/docs">
-            <BookIcon />
-            Documentation
-          </SidebarItem>
-
-          <SidebarItem href="https://github.com/tidemeter/tidemeter">
-            <CodeIcon />
-            GitHub
-          </SidebarItem>
-
-          <SidebarItem href="/api/health">
-            <ServerIcon />
-            System Status
-          </SidebarItem>
-
-          <SidebarItem href="https://github.com/tidemeter/tidemeter/releases">
-            <HeartIcon />
-            What&apos;s New
-          </SidebarItem>
-        </SidebarSection>
       </Sidebar>
 
       <div className="flex flex-1 flex-col overflow-hidden">

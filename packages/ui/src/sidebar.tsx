@@ -5,6 +5,7 @@ import { cn } from "./utils";
 
 interface SidebarProps {
   children: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
   open?: boolean;
   onClose?: () => void;
@@ -26,7 +27,13 @@ function TideMeterLogo() {
   );
 }
 
-export function Sidebar({ children, className, open, onClose }: SidebarProps) {
+export function Sidebar({
+  children,
+  footer,
+  className,
+  open,
+  onClose,
+}: SidebarProps) {
   return (
     <>
       {/* Mobile overlay */}
@@ -45,7 +52,7 @@ export function Sidebar({ children, className, open, onClose }: SidebarProps) {
       >
         <div className="flex h-14 shrink-0 items-center border-b border-gray-200/80 px-5 dark:border-gray-800">
           <a
-            href="/"
+            href="https://tidemeter.com"
             className="flex items-center gap-2.5 transition-opacity hover:opacity-80"
           >
             <TideMeterLogo />
@@ -55,6 +62,11 @@ export function Sidebar({ children, className, open, onClose }: SidebarProps) {
           </a>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4">{children}</nav>
+        {footer && (
+          <div className="shrink-0 border-t border-gray-200/80 px-3 py-4 dark:border-gray-800">
+            {footer}
+          </div>
+        )}
         <div className="border-t border-gray-200/80 px-4 py-3 dark:border-gray-800">
           <p className="text-[11px] text-gray-400 dark:text-gray-500">
             Privacy-first analytics

@@ -34,12 +34,28 @@ export default async function LoginPage() {
           </p>
         </div>
         {isDemoMode && (
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
-            <p className="text-center text-sm text-blue-700 dark:text-blue-300">
-              Demo mode — log in with{" "}
-              <span className="font-semibold">demo@demo.com</span> /{" "}
-              <span className="font-semibold">demodemo</span>
+          <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 shadow-sm dark:border-blue-800 dark:bg-blue-900/20">
+            <p className="text-center text-sm font-semibold text-blue-800 dark:text-blue-200">
+              Demo mode credentials
             </p>
+            <div className="mt-3 space-y-2 rounded-lg bg-white/70 p-3 dark:bg-gray-900/40">
+              <div className="flex items-center justify-between gap-3 rounded-md bg-blue-100/70 px-3 py-2 dark:bg-blue-950/40">
+                <span className="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                  Username
+                </span>
+                <span className="font-mono text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  demo@demo.com
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-md bg-blue-100/70 px-3 py-2 dark:bg-blue-950/40">
+                <span className="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                  Password
+                </span>
+                <span className="font-mono text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  demodemo
+                </span>
+              </div>
+            </div>
           </div>
         )}
         <LoginForm />
