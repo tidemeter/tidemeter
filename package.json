@@ -13,5 +13,6 @@
   "devDependencies": {
     "turbo": "^2.9.3",
     "vitest": "^4.1.2"
-  }
+  },
+  "version": "0.1.1"
 }
