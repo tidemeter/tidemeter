@@ -35,7 +35,9 @@ cp .env.example .env
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-Visit **http://localhost:3000** to create your admin account and add your first website.
+Visit **http://localhost:3700** to create your admin account and add your first website.
+
+> **Documentation**: Full docs available at [tidemeter.com/docs](https://tidemeter.com/docs)
 
 ## Development Setup
 
@@ -71,7 +73,7 @@ pnpm lint
 pnpm db:migrate
 ```
 
-The dev server starts at **http://localhost:3000** with Turbopack HMR.
+The dev server starts at **http://localhost:3700** with Turbopack HMR.
 
 ## Adding the Tracker
 
@@ -166,7 +168,7 @@ This starts PostgreSQL (for PayloadCMS) + ClickHouse (for analytics) + the TideM
 | CMS           | PayloadCMS 3                     |
 | Styling       | Tailwind CSS 4                   |
 | Charts        | Recharts                         |
-| State         | Zustand + TanStack Query         |
+| State         | React Hooks                      |
 | Analytics ORM | Drizzle ORM                      |
 | Build         | Turborepo + pnpm                 |
 | Runtime       | Node.js 22 (Alpine)              |

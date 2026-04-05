@@ -124,7 +124,7 @@ const { docs } = await payload.find({ collection: "websites" });
 
 - Must have `'use client'` directive
 - Use `useAuth()` hook for current user
-- Use `useQuery()` from `@tanstack/react-query` for data fetching
+- Use `useState` + `fetch()` with `credentials: 'include'` for data fetching
 - Import UI components from `@tidemeter/ui`
 
 ### Data Fetching

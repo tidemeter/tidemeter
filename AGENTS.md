@@ -147,3 +147,36 @@ Ports: App=3700, PostgreSQL=5480, ClickHouse HTTP=8124, ClickHouse native=9001
 - **Do NOT** use `middleware.ts` — use `proxy.ts` (Next.js 16)
 - **Do NOT** use `.js` extensions in TypeScript imports
 - Validate changes with `pnpm build && pnpm test` before committing
+
+## Documentation Sync
+
+When changes are made to this repository that affect user-facing behavior, **also update the documentation** in the companion `tidemeter-website/` repository:
+
+### What triggers a docs update
+
+- New or changed environment variables → update `configuration.mdx`
+- New or changed API endpoints → update `api.mdx`
+- New or changed collections/fields → update `api.mdx` and `architecture.mdx`
+- Tracker script changes (attributes, API, behavior) → update `tracker.mdx`
+- New packages or architecture changes → update `architecture.mdx` and `index.mdx`
+- Deployment or Docker changes → update `deployment.mdx`
+- New prerequisites or setup steps → update `getting-started.mdx`
+- FAQ-worthy changes → update `faq.mdx`
+- Code convention changes → update `contributing.mdx`
+
+### Files to update
+
+| This repo change                     | Update in `tidemeter-website/`                                |
+| ------------------------------------ | ------------------------------------------------------------- |
+| `.env.example`, env var usage        | `src/content/configuration.mdx`                               |
+| `apps/web/src/app/api/` routes       | `src/content/api.mdx`                                         |
+| `packages/tracker/`                  | `src/content/tracker.mdx`                                     |
+| `packages/analytics/` types/adapters | `src/content/architecture.mdx`                                |
+| `apps/web/src/payload/collections/`  | `src/content/api.mdx`                                         |
+| `docker/` files                      | `src/content/deployment.mdx`, `src/content/configuration.mdx` |
+| Root `package.json` scripts          | `src/content/getting-started.mdx`                             |
+| Code conventions                     | `src/content/contributing.mdx`                                |
+
+### Also update in this repo
+
+- **`README.md`** — Keep the quick start, environment variables table, architecture diagram, and project structure in sync with actual code.

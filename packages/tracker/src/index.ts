@@ -3,17 +3,13 @@
  * No cookies, privacy-first, ~3KB minified
  */
 
-interface TrackPayload {
-  websiteId: string;
-  url: string;
-  referrer: string;
-  title: string;
-  screen: string;
-  language: string;
-  name: string;
-  data?: Record<string, string | number | boolean>;
-  userId?: string;
-}
+import {
+  type TrackPayload,
+  parseConfig,
+  shouldBlock,
+  buildPayload,
+  sendPayload,
+} from "./core";
 
 interface TideMeterAPI {
   track: (
@@ -27,73 +23,32 @@ interface TideMeterAPI {
   const script = document.currentScript as HTMLScriptElement | null;
   if (!script) return;
 
-  const websiteId = script.getAttribute("data-website-id");
-  const hostUrl =
-    script.getAttribute("data-host-url") || script.src.replace(/\/t\.js$/, "");
-  const autoTrack = script.getAttribute("data-auto-track") !== "false";
-  const respectDnt = script.getAttribute("data-respect-dnt") !== "false";
-  const allowedDomains = script
-    .getAttribute("data-domains")
-    ?.split(",")
-    .map((d) => d.trim());
+  const parsed = parseConfig(script);
+  if (!parsed) return;
+  const config = parsed;
 
-  if (!websiteId) {
-    console.warn("[TideMeter] Missing data-website-id attribute");
-    return;
-  }
+  if (shouldBlock(config, navigator, location.hostname)) return;
 
-  // Respect Do-Not-Track
-  if (respectDnt && navigator.doNotTrack === "1") return;
-
-  // Domain check
-  if (allowedDomains && allowedDomains.length > 0) {
-    if (!allowedDomains.includes(location.hostname)) return;
-  }
-
-  // Bot detection
-  if ((navigator as any).webdriver) return;
-
-  const endpoint = `${hostUrl}/api/collect`;
+  const endpoint = `${config.hostUrl}/api/collect`;
   let currentUrl = location.pathname + location.search;
   let currentReferrer = document.referrer;
   let knownUserId: string | undefined;
 
   function send(payload: TrackPayload): void {
-    const body = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(
-        endpoint,
-        new Blob([body], { type: "application/json" }),
-      );
-    } else {
-      fetch(endpoint, {
-        method: "POST",
-        body,
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-      }).catch(() => {});
-    }
-  }
-
-  function buildPayload(
-    name: string,
-    data?: Record<string, string | number | boolean>,
-  ): TrackPayload {
-    return {
-      websiteId: websiteId!,
-      url: currentUrl,
-      referrer: currentReferrer,
-      title: document.title,
-      screen: `${screen.width}x${screen.height}`,
-      language: navigator.language,
-      name,
-      ...(data && Object.keys(data).length > 0 ? { data } : {}),
-      ...(knownUserId ? { userId: knownUserId } : {}),
-    };
+    sendPayload(endpoint, payload);
   }
 
   function trackPageview(): void {
-    send(buildPayload("pageview"));
+    send(
+      buildPayload(
+        config.websiteId,
+        currentUrl,
+        currentReferrer,
+        "pageview",
+        undefined,
+        knownUserId,
+      ),
+    );
   }
 
   function track(
@@ -104,7 +59,16 @@ interface TideMeterAPI {
       trackPageview();
       return;
     }
-    send(buildPayload(name, data));
+    send(
+      buildPayload(
+        config.websiteId,
+        currentUrl,
+        currentReferrer,
+        name,
+        data,
+        knownUserId,
+      ),
+    );
   }
 
   /**
@@ -116,7 +80,16 @@ interface TideMeterAPI {
     if (!userId) return;
     knownUserId = userId;
     // Send an identify event so the server can link identities
-    send(buildPayload("identify"));
+    send(
+      buildPayload(
+        config.websiteId,
+        currentUrl,
+        currentReferrer,
+        "identify",
+        undefined,
+        knownUserId,
+      ),
+    );
   }
 
   // SPA navigation tracking
@@ -128,7 +101,7 @@ interface TideMeterAPI {
     trackPageview();
   }
 
-  if (autoTrack) {
+  if (config.autoTrack) {
     // Track initial pageview
     trackPageview();
 
