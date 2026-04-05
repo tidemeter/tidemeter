@@ -21,6 +21,17 @@ FROM node:22-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
 
+ARG DATABASE_URL=postgresql://tidemeter:tidemeter@127.0.0.1:5432/tidemeter
+ARG ANALYTICS_DATABASE_URL=postgresql://tidemeter:tidemeter@127.0.0.1:5432/tidemeter
+ARG PAYLOAD_SECRET=build-only-secret-change-me
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ARG SESSION_SALT_SECRET=build-only-session-salt
+ENV DATABASE_URL=$DATABASE_URL \
+    ANALYTICS_DATABASE_URL=$ANALYTICS_DATABASE_URL \
+    PAYLOAD_SECRET=$PAYLOAD_SECRET \
+    NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL \
+    SESSION_SALT_SECRET=$SESSION_SALT_SECRET
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/packages/tracker/node_modules ./packages/tracker/node_modules

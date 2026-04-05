@@ -79,6 +79,12 @@ jobs:
           context: .
           file: docker/Dockerfile
           push: true
+          build-args: |
+            DATABASE_URL=postgresql://x:x@127.0.0.1:5432/x
+            ANALYTICS_DATABASE_URL=postgresql://x:x@127.0.0.1:5432/x
+            PAYLOAD_SECRET=build-only-secret-change-me
+            NEXT_PUBLIC_APP_URL=http://localhost:3000
+            SESSION_SALT_SECRET=build-only-session-salt
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

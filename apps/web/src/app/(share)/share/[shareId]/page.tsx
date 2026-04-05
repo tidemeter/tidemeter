@@ -5,6 +5,9 @@ import { getAnalyticsRepository } from "@/lib/analytics";
 import { parseDateRange, inferInterval } from "@/lib/utils/date";
 import { SharedDashboard } from "@/components/analytics/shared-dashboard";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface PageProps {
   params: Promise<{ shareId: string }>;
   searchParams: Promise<{ period?: string }>;
