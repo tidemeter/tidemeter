@@ -7,6 +7,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import type { Payload } from "payload";
+import { hasAnalyticsData, seedAnalyticsData } from "@tidemeter/analytics";
 
 const DEMO_EMAIL = "demo@demo.com";
 const DEMO_PASSWORD = "demodemo";
@@ -178,7 +179,7 @@ const JOURNEY_TEMPLATES = [
     dropoffRates: [0.0, 0.3, 0.35, 0.45, 0.4],
   },
   { weight: 20, steps: null, dropoffRates: null },
-] as const;
+];
 
 const DEMO_FUNNELS = [
   {
@@ -280,7 +281,7 @@ const DEMO_FUNNELS = [
       },
     ],
   },
-];
+] as const;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -440,264 +441,244 @@ export async function seedDemoData(payload: Payload): Promise<void> {
   }
 
   // --- Step 3: Insert analytics data directly via SQL ---
-  const postgres = (await import("postgres")).default;
-  const sql = postgres(dbUrl, { onnotice: () => {} });
+  const existing = await hasAnalyticsData(dbUrl, String(websiteId));
+  if (existing) {
+    console.log(`[seed-demo] Analytics data already exists, skipping`);
+    await seedFunnels(payload, websiteId, demoUserId);
+    return;
+  }
 
-  try {
-    // Check if demo data already exists
-    const existing = await sql`
-      SELECT count(*)::int as cnt FROM analytics.page_events
-      WHERE website_id = ${String(websiteId)}
-    `;
-    if (existing[0].cnt > 0) {
-      console.log(
-        `[seed-demo] Analytics data already exists (${existing[0].cnt} events), skipping`,
-      );
-      await sql.end();
-      await seedFunnels(payload, websiteId, demoUserId);
-      return;
-    }
+  console.log(
+    `[seed-demo] Generating ${EVENT_COUNT} events over ${DAYS_BACK} days...`,
+  );
 
-    console.log(
-      `[seed-demo] Generating ${EVENT_COUNT} events over ${DAYS_BACK} days...`,
-    );
+  // Build events
+  const events: Record<string, unknown>[] = [];
+  const identityLinks: Record<string, unknown>[] = [];
+  const visitorCount = Math.floor(EVENT_COUNT / 3);
+  const identifiedCount = Math.min(
+    IDENTIFIED_USERS.length,
+    Math.floor(visitorCount * 0.3),
+  );
+  const returningFraction = 0.35;
 
-    // Build events
-    const events: Record<string, unknown>[] = [];
-    const identityLinks: Record<string, unknown>[] = [];
-    const visitorCount = Math.floor(EVENT_COUNT / 3);
-    const identifiedCount = Math.min(
-      IDENTIFIED_USERS.length,
-      Math.floor(visitorCount * 0.3),
-    );
-    const returningFraction = 0.35;
+  for (let i = 0; i < visitorCount; i++) {
+    const ua = pick(USER_AGENTS);
+    const ip = randomIp();
+    const screen = pick(SCREENS);
+    const geo = pick(GEO_LOCATIONS);
+    const { browser, browserVersion, os, osVersion, deviceType } = parseUA(ua);
+    const visitorId = hashId(String(websiteId), ip, ua, "seed-salt");
 
-    for (let i = 0; i < visitorCount; i++) {
-      const ua = pick(USER_AGENTS);
-      const ip = randomIp();
-      const screen = pick(SCREENS);
-      const geo = pick(GEO_LOCATIONS);
-      const { browser, browserVersion, os, osVersion, deviceType } =
-        parseUA(ua);
-      const visitorId = hashId(String(websiteId), ip, ua, "seed-salt");
+    const isIdentified = i < identifiedCount;
+    const isReturning = isIdentified || Math.random() < returningFraction;
 
-      const isIdentified = i < identifiedCount;
-      const isReturning = isIdentified || Math.random() < returningFraction;
+    let sessionCount: number;
+    if (isIdentified) sessionCount = 3 + Math.floor(Math.random() * 6);
+    else if (isReturning) sessionCount = 2 + Math.floor(Math.random() * 5);
+    else sessionCount = 1;
 
-      let sessionCount: number;
-      if (isIdentified) sessionCount = 3 + Math.floor(Math.random() * 6);
-      else if (isReturning) sessionCount = 2 + Math.floor(Math.random() * 5);
-      else sessionCount = 1;
-
-      if (isIdentified) {
-        const identifiedUser = IDENTIFIED_USERS[i % IDENTIFIED_USERS.length];
-        identityLinks.push({
-          website_id: String(websiteId),
-          visitor_id: visitorId,
-          user_id: identifiedUser.userId,
-          linked_at: randomTimestamp(DAYS_BACK),
-        });
-      }
-
-      for (let s = 0; s < sessionCount; s++) {
-        let sessionStart: Date;
-        if (isReturning && s > 0) {
-          const firstVisitDaysAgo =
-            DAYS_BACK - Math.floor(Math.random() * (DAYS_BACK - 14));
-          const now = Date.now();
-          const firstVisitTime = now - firstVisitDaysAgo * 24 * 60 * 60 * 1000;
-          const returnIntervals = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60];
-          const dayOffset =
-            returnIntervals[Math.min(s - 1, returnIntervals.length - 1)] +
-            Math.floor(Math.random() * 3);
-          sessionStart = new Date(
-            firstVisitTime + dayOffset * 24 * 60 * 60 * 1000,
-          );
-          if (sessionStart.getTime() > now) {
-            sessionStart = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
-          }
-        } else {
-          sessionStart = randomTimestamp(DAYS_BACK);
-        }
-
-        const sessionBlock = Math.floor(
-          sessionStart.getTime() / (30 * 60 * 1000),
-        );
-        const sessionId = hashId(visitorId, String(sessionBlock), String(s));
-        const referrer = pick(REFERRERS);
-        const sessionGeo =
-          isIdentified && Math.random() < 0.3 ? pick(GEO_LOCATIONS) : geo;
-        const journey = pickJourney();
-        let utmSource = "",
-          utmMedium = "",
-          utmCampaign = "";
-        const utm = pick(UTM_CAMPAIGNS);
-        if (utm) {
-          utmSource = utm.source;
-          utmMedium = utm.medium;
-          utmCampaign = utm.campaign;
-        }
-
-        if (journey.steps) {
-          for (
-            let p = 0;
-            p < journey.steps.length && events.length < EVENT_COUNT;
-            p++
-          ) {
-            const step = journey.steps[p];
-            const ts = new Date(
-              sessionStart.getTime() + p * (15000 + Math.random() * 90000),
-            );
-            events.push({
-              website_id: String(websiteId),
-              session_id: sessionId,
-              visitor_id: visitorId,
-              timestamp: ts,
-              event_name: step.eventName || "pageview",
-              url_path: step.path,
-              url_query: "",
-              referrer_path: "",
-              referrer_domain: p === 0 ? parseReferrerDomain(referrer) : "",
-              utm_source: p === 0 ? utmSource : "",
-              utm_medium: p === 0 ? utmMedium : "",
-              utm_campaign: p === 0 ? utmCampaign : "",
-              utm_content: "",
-              utm_term: "",
-              country: sessionGeo.country,
-              region: sessionGeo.region,
-              city: sessionGeo.city,
-              browser,
-              browser_version: browserVersion,
-              os,
-              os_version: osVersion,
-              device_type: deviceType,
-              screen_size: screen,
-              page_title: step.title,
-              hostname: DEMO_DOMAIN,
-            });
-            if (
-              journey.dropoffRates[p] > 0 &&
-              Math.random() < journey.dropoffRates[p]
-            )
-              break;
-          }
-        } else {
-          const pageCount = isIdentified
-            ? 2 + Math.floor(Math.random() * 6)
-            : Math.random() < 0.4
-              ? 1
-              : 1 + Math.floor(Math.random() * 5);
-          for (let p = 0; p < pageCount && events.length < EVENT_COUNT; p++) {
-            const page = p === 0 ? pick(PAGES.slice(0, 5)) : pick(PAGES);
-            const ts = new Date(
-              sessionStart.getTime() + p * (10000 + Math.random() * 120000),
-            );
-            events.push({
-              website_id: String(websiteId),
-              session_id: sessionId,
-              visitor_id: visitorId,
-              timestamp: ts,
-              event_name:
-                isIdentified && p > 0 && Math.random() < 0.2
-                  ? pick(["signup", "download", "add_to_cart", "checkout"])
-                  : "pageview",
-              url_path: page.path,
-              url_query: "",
-              referrer_path: "",
-              referrer_domain: p === 0 ? parseReferrerDomain(referrer) : "",
-              utm_source: p === 0 ? utmSource : "",
-              utm_medium: p === 0 ? utmMedium : "",
-              utm_campaign: p === 0 ? utmCampaign : "",
-              utm_content: "",
-              utm_term: "",
-              country: sessionGeo.country,
-              region: sessionGeo.region,
-              city: sessionGeo.city,
-              browser,
-              browser_version: browserVersion,
-              os,
-              os_version: osVersion,
-              device_type: deviceType,
-              screen_size: screen,
-              page_title: page.title,
-              hostname: DEMO_DOMAIN,
-            });
-          }
-        }
-      }
-    }
-
-    // Build session records
-    const sessionMap = new Map<string, Record<string, unknown>[]>();
-    for (const evt of events) {
-      const sid = evt.session_id as string;
-      if (!sessionMap.has(sid)) sessionMap.set(sid, []);
-      sessionMap.get(sid)!.push(evt);
-    }
-
-    const sessionRecords: Record<string, unknown>[] = [];
-    for (const [sessionId, sessionEvents] of sessionMap) {
-      sessionEvents.sort(
-        (a, b) =>
-          (a.timestamp as Date).getTime() - (b.timestamp as Date).getTime(),
-      );
-      const first = sessionEvents[0];
-      const last = sessionEvents[sessionEvents.length - 1];
-      const durationMs =
-        (last.timestamp as Date).getTime() -
-        (first.timestamp as Date).getTime();
-      const pageviews = sessionEvents.filter(
-        (e) => e.event_name === "pageview",
-      ).length;
-      const customEvents = sessionEvents.filter(
-        (e) => e.event_name !== "pageview",
-      ).length;
-
-      sessionRecords.push({
-        id: sessionId,
-        website_id: first.website_id,
-        visitor_id: first.visitor_id,
-        started_at: first.timestamp,
-        ended_at: last.timestamp,
-        duration: Math.floor(durationMs / 1000),
-        entry_page: first.url_path,
-        exit_page: last.url_path,
-        pageviews,
-        events: customEvents,
-        is_bounce: sessionEvents.length === 1,
-        referrer_domain: first.referrer_domain,
-        referrer_path: first.referrer_path || "",
-        utm_source: first.utm_source,
-        utm_medium: first.utm_medium,
-        utm_campaign: first.utm_campaign,
-        country: first.country,
-        region: first.region,
-        city: first.city,
-        browser: first.browser,
-        os: first.os,
-        device_type: first.device_type,
-        screen_size: first.screen_size,
+    if (isIdentified) {
+      const identifiedUser = IDENTIFIED_USERS[i % IDENTIFIED_USERS.length];
+      identityLinks.push({
+        website_id: String(websiteId),
+        visitor_id: visitorId,
+        user_id: identifiedUser.userId,
+        linked_at: randomTimestamp(DAYS_BACK),
       });
     }
 
-    // Insert in batches
-    const BATCH = 100;
-    for (let i = 0; i < events.length; i += BATCH) {
-      await sql`INSERT INTO analytics.page_events ${sql(events.slice(i, i + BATCH))}`;
-    }
-    for (let i = 0; i < sessionRecords.length; i += BATCH) {
-      await sql`INSERT INTO analytics.sessions ${sql(sessionRecords.slice(i, i + BATCH))}`;
-    }
-    if (identityLinks.length > 0) {
-      await sql`INSERT INTO analytics.visitor_identities ${sql(identityLinks)}`;
-    }
+    for (let s = 0; s < sessionCount; s++) {
+      let sessionStart: Date;
+      if (isReturning && s > 0) {
+        const firstVisitDaysAgo =
+          DAYS_BACK - Math.floor(Math.random() * (DAYS_BACK - 14));
+        const now = Date.now();
+        const firstVisitTime = now - firstVisitDaysAgo * 24 * 60 * 60 * 1000;
+        const returnIntervals = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60];
+        const dayOffset =
+          returnIntervals[Math.min(s - 1, returnIntervals.length - 1)] +
+          Math.floor(Math.random() * 3);
+        sessionStart = new Date(
+          firstVisitTime + dayOffset * 24 * 60 * 60 * 1000,
+        );
+        if (sessionStart.getTime() > now) {
+          sessionStart = new Date(now - Math.random() * 24 * 60 * 60 * 1000);
+        }
+      } else {
+        sessionStart = randomTimestamp(DAYS_BACK);
+      }
 
-    console.log(
-      `[seed-demo] Inserted ${events.length} events, ${sessionRecords.length} sessions, ${identityLinks.length} identity links`,
-    );
-  } finally {
-    await sql.end();
+      const sessionBlock = Math.floor(
+        sessionStart.getTime() / (30 * 60 * 1000),
+      );
+      const sessionId = hashId(visitorId, String(sessionBlock), String(s));
+      const referrer = pick(REFERRERS);
+      const sessionGeo =
+        isIdentified && Math.random() < 0.3 ? pick(GEO_LOCATIONS) : geo;
+      const journey = pickJourney();
+      let utmSource = "",
+        utmMedium = "",
+        utmCampaign = "";
+      const utm = pick(UTM_CAMPAIGNS);
+      if (utm) {
+        utmSource = utm.source;
+        utmMedium = utm.medium;
+        utmCampaign = utm.campaign;
+      }
+
+      if (journey.steps) {
+        for (
+          let p = 0;
+          p < journey.steps.length && events.length < EVENT_COUNT;
+          p++
+        ) {
+          const step = journey.steps[p];
+          const ts = new Date(
+            sessionStart.getTime() + p * (15000 + Math.random() * 90000),
+          );
+          events.push({
+            website_id: String(websiteId),
+            session_id: sessionId,
+            visitor_id: visitorId,
+            timestamp: ts,
+            event_name: step.eventName || "pageview",
+            url_path: step.path,
+            url_query: "",
+            referrer_path: "",
+            referrer_domain: p === 0 ? parseReferrerDomain(referrer) : "",
+            utm_source: p === 0 ? utmSource : "",
+            utm_medium: p === 0 ? utmMedium : "",
+            utm_campaign: p === 0 ? utmCampaign : "",
+            utm_content: "",
+            utm_term: "",
+            country: sessionGeo.country,
+            region: sessionGeo.region,
+            city: sessionGeo.city,
+            browser,
+            browser_version: browserVersion,
+            os,
+            os_version: osVersion,
+            device_type: deviceType,
+            screen_size: screen,
+            page_title: step.title,
+            hostname: DEMO_DOMAIN,
+          });
+          if (
+            journey.dropoffRates[p] > 0 &&
+            Math.random() < journey.dropoffRates[p]
+          )
+            break;
+        }
+      } else {
+        const pageCount = isIdentified
+          ? 2 + Math.floor(Math.random() * 6)
+          : Math.random() < 0.4
+            ? 1
+            : 1 + Math.floor(Math.random() * 5);
+        for (let p = 0; p < pageCount && events.length < EVENT_COUNT; p++) {
+          const page = p === 0 ? pick(PAGES.slice(0, 5)) : pick(PAGES);
+          const ts = new Date(
+            sessionStart.getTime() + p * (10000 + Math.random() * 120000),
+          );
+          events.push({
+            website_id: String(websiteId),
+            session_id: sessionId,
+            visitor_id: visitorId,
+            timestamp: ts,
+            event_name:
+              isIdentified && p > 0 && Math.random() < 0.2
+                ? pick(["signup", "download", "add_to_cart", "checkout"])
+                : "pageview",
+            url_path: page.path,
+            url_query: "",
+            referrer_path: "",
+            referrer_domain: p === 0 ? parseReferrerDomain(referrer) : "",
+            utm_source: p === 0 ? utmSource : "",
+            utm_medium: p === 0 ? utmMedium : "",
+            utm_campaign: p === 0 ? utmCampaign : "",
+            utm_content: "",
+            utm_term: "",
+            country: sessionGeo.country,
+            region: sessionGeo.region,
+            city: sessionGeo.city,
+            browser,
+            browser_version: browserVersion,
+            os,
+            os_version: osVersion,
+            device_type: deviceType,
+            screen_size: screen,
+            page_title: page.title,
+            hostname: DEMO_DOMAIN,
+          });
+        }
+      }
+    }
   }
+
+  // Build session records
+  const sessionMap = new Map<string, Record<string, unknown>[]>();
+  for (const evt of events) {
+    const sid = evt.session_id as string;
+    if (!sessionMap.has(sid)) sessionMap.set(sid, []);
+    sessionMap.get(sid)!.push(evt);
+  }
+
+  const sessionRecords: Record<string, unknown>[] = [];
+  for (const [sessionId, sessionEvents] of sessionMap) {
+    sessionEvents.sort(
+      (a, b) =>
+        (a.timestamp as Date).getTime() - (b.timestamp as Date).getTime(),
+    );
+    const first = sessionEvents[0];
+    const last = sessionEvents[sessionEvents.length - 1];
+    const durationMs =
+      (last.timestamp as Date).getTime() - (first.timestamp as Date).getTime();
+    const pageviews = sessionEvents.filter(
+      (e) => e.event_name === "pageview",
+    ).length;
+    const customEvents = sessionEvents.filter(
+      (e) => e.event_name !== "pageview",
+    ).length;
+
+    sessionRecords.push({
+      id: sessionId,
+      website_id: first.website_id,
+      visitor_id: first.visitor_id,
+      started_at: first.timestamp,
+      ended_at: last.timestamp,
+      duration: Math.floor(durationMs / 1000),
+      entry_page: first.url_path,
+      exit_page: last.url_path,
+      pageviews,
+      events: customEvents,
+      is_bounce: sessionEvents.length === 1,
+      referrer_domain: first.referrer_domain,
+      referrer_path: first.referrer_path || "",
+      utm_source: first.utm_source,
+      utm_medium: first.utm_medium,
+      utm_campaign: first.utm_campaign,
+      country: first.country,
+      region: first.region,
+      city: first.city,
+      browser: first.browser,
+      os: first.os,
+      device_type: first.device_type,
+      screen_size: first.screen_size,
+    });
+  }
+
+  // Insert via analytics package helper
+  const result = await seedAnalyticsData(dbUrl, {
+    websiteId: String(websiteId),
+    events,
+    sessions: sessionRecords,
+    identityLinks,
+  });
+
+  console.log(
+    `[seed-demo] Inserted ${result.events} events, ${result.sessions} sessions, ${result.identityLinks} identity links`,
+  );
 
   // --- Step 4: Create demo funnels ---
   await seedFunnels(payload, websiteId, demoUserId);
@@ -731,9 +712,9 @@ async function seedFunnels(
         collection: "funnels",
         data: {
           name: funnel.name,
-          website: websiteId,
-          steps: funnel.steps,
-          createdBy: demoUserId,
+          website: websiteId as number,
+          steps: [...funnel.steps],
+          createdBy: demoUserId as number,
         },
         overrideAccess: true,
       });

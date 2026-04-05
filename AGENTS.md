@@ -45,6 +45,16 @@ pnpm --filter @tidemeter/tracker build
 DATABASE_URL="postgresql://x:x@localhost:5480/x" pnpm build
 ```
 
+### Build-time constraints (CI/CD)
+
+The Docker image is built on GitHub Actions **without any database connection**. This means:
+
+- **Do NOT** run migrations, DB queries, or seed data during `pnpm build` / `next build`
+- **Do NOT** put top-level `await` or side-effects that contact a database in imported modules
+- All database access in `payload.config.ts` must be inside the `onInit` callback (which runs at **runtime**, not build time)
+- Dummy env vars (`DATABASE_URL`, `PAYLOAD_SECRET`, etc.) are passed as build args purely for type-checking
+- Any new server-side dependency that uses native modules or requires network must be added to both `apps/web/package.json` (so Turbopack can resolve it) and `next.config.ts` `serverExternalPackages` (so it's not bundled)
+
 ## Architecture
 
 ### Dual Database Pattern
@@ -146,6 +156,7 @@ Ports: App=3700, PostgreSQL=5480, ClickHouse HTTP=8124, ClickHouse native=9001
 - **Do NOT** commit `.env` or secrets
 - **Do NOT** use `middleware.ts` — use `proxy.ts` (Next.js 16)
 - **Do NOT** use `.js` extensions in TypeScript imports
+- **Do NOT** connect to a database or run migrations at build time — all DB access happens at runtime via `onInit`
 - Validate changes with `pnpm build && pnpm test` before committing
 
 ## Database Migrations & Demo Data

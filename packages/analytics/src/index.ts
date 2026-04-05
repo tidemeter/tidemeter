@@ -31,3 +31,8 @@ export type {
 } from "./types.js";
 export { createAnalyticsRepository, type AnalyticsConfig } from "./factory.js";
 export { runMigrations } from "./migrate.js";
+export {
+  seedAnalyticsData,
+  hasAnalyticsData,
+  type SeedAnalyticsInput,
+} from "./seed-helpers.js";
