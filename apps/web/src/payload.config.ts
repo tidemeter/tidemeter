@@ -3,6 +3,8 @@ import path from "path";
 import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { runMigrations } from "@tidemeter/analytics";
+import { seedDemoData } from "./lib/seed-demo";
 import { Users } from "./payload/collections/users";
 import { Websites } from "./payload/collections/websites";
 import { Teams } from "./payload/collections/teams";
@@ -29,6 +31,26 @@ export default buildConfig({
   editor: lexicalEditor(),
 
   secret: process.env.PAYLOAD_SECRET || "CHANGE_ME_IN_PRODUCTION",
+
+  onInit: async (payload) => {
+    const analyticsDbUrl =
+      process.env.ANALYTICS_DATABASE_URL || process.env.DATABASE_URL || "";
+    if (analyticsDbUrl) {
+      try {
+        await runMigrations(analyticsDbUrl);
+      } catch (err) {
+        console.error("[payload:onInit] Analytics migration failed:", err);
+      }
+    }
+
+    if (process.env.DEMO_MODE === "true") {
+      try {
+        await seedDemoData(payload);
+      } catch (err) {
+        console.error("[payload:onInit] Demo seed failed:", err);
+      }
+    }
+  },
 
   db: postgresAdapter({
     pool: {

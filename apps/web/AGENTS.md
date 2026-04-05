@@ -153,3 +153,41 @@ const { docs } = await payload.find({ collection: "websites" });
 - Do NOT use `import.meta.dirname` — use `fileURLToPath` pattern
 - Do NOT add `.js` extensions to TypeScript imports
 - Do NOT put heavy auth logic in `proxy.ts` — only cookie presence checks
+
+## Database Migrations & Startup
+
+There is **no database connection at build time** (GitHub CI builds without a DB). All schema changes are applied at **runtime on first startup** via the `onInit` hook in `src/payload.config.ts`.
+
+### PayloadCMS schema changes
+
+PayloadCMS auto-pushes schema changes on startup — it compares collection definitions against the actual database and applies DDL. For most changes (adding/removing fields, new collections) **no migration files are needed**.
+
+For breaking data migrations (renaming columns, transforming existing data):
+
+```bash
+cd apps/web
+npx payload migrate:create   # generates a migration file in src/migrations/
+```
+
+Commit the migration file. PayloadCMS auto-runs pending migrations on next startup.
+
+### Analytics schema changes
+
+Analytics tables are managed by a custom SQL runner (`@tidemeter/analytics` → `runMigrations()`) called from `onInit`. Migrations are `.sql` files in `packages/analytics/drizzle/`.
+
+To add a migration:
+
+1. Update Drizzle schema in `packages/analytics/src/schema/tables.ts`
+2. Create numbered `.sql` file (e.g. `0002_add_column.sql`) in `packages/analytics/drizzle/`
+3. It runs automatically on next app startup
+
+### Demo data (`DEMO_MODE=true`)
+
+When `DEMO_MODE=true`, the `onInit` hook calls `seedDemoData()` from `src/lib/seed-demo.ts`:
+
+- Creates demo user (`demo@demo.com` / `demodemo`) and demo website via Payload Local API
+- Inserts ~1500 analytics events and 3 funnels directly via SQL
+- Login page shows a credentials banner
+- All seeding is idempotent (skips if data exists)
+
+**When making changes that affect the database, always check if `src/lib/seed-demo.ts` needs updating** (new collections, changed fields, removed fields used by demo data).

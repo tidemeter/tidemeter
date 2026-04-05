@@ -8,6 +8,8 @@ export default async function LoginPage() {
     redirect("/");
   }
 
+  const isDemoMode = process.env.DEMO_MODE === "true";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-gray-900">
       <div className="w-full max-w-sm">
@@ -31,6 +33,15 @@ export default async function LoginPage() {
             Sign in to your TideMeter dashboard
           </p>
         </div>
+        {isDemoMode && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
+            <p className="text-center text-sm text-blue-700 dark:text-blue-300">
+              Demo mode — log in with{" "}
+              <span className="font-semibold">demo@demo.com</span> /{" "}
+              <span className="font-semibold">demodemo</span>
+            </p>
+          </div>
+        )}
         <LoginForm />
         <p className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
           Privacy-focused web analytics

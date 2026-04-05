@@ -148,6 +148,64 @@ Ports: App=3700, PostgreSQL=5480, ClickHouse HTTP=8124, ClickHouse native=9001
 - **Do NOT** use `.js` extensions in TypeScript imports
 - Validate changes with `pnpm build && pnpm test` before committing
 
+## Database Migrations & Demo Data
+
+There is **no database connection at build time** (CI/CD builds on GitHub). All schema changes are applied **at runtime on first startup** via the `onInit` hook in `apps/web/src/payload.config.ts`.
+
+### Two separate migration systems
+
+#### 1. PayloadCMS schema (users, teams, websites, API keys, funnels)
+
+PayloadCMS auto-pushes schema changes on startup — it compares its collection definitions against the actual database and applies DDL as needed. **No explicit migration files are required** for most changes (adding/removing fields, collections).
+
+For breaking changes that need a data migration (renaming columns, transforming data):
+
+1. Run `npx payload migrate:create` inside `apps/web/` to generate a migration file
+2. Commit the migration file — PayloadCMS auto-runs pending migrations on next startup
+3. Migration files go in `apps/web/src/migrations/` (auto-created by PayloadCMS CLI)
+
+#### 2. Analytics schema (page_events, sessions, visitor_identities)
+
+Uses a custom SQL migration runner (`packages/analytics/src/migrate.ts`) that auto-runs on every startup via `onInit`. Migration `.sql` files live in `packages/analytics/drizzle/`.
+
+When changing analytics tables:
+
+1. Update the Drizzle schema in `packages/analytics/src/schema/tables.ts`
+2. Create a new numbered `.sql` file in `packages/analytics/drizzle/` (e.g. `0002_add_column.sql`)
+3. The migration runs automatically on next app startup
+
+### Demo data (`DEMO_MODE=true`)
+
+When `DEMO_MODE=true` env var is set, the `onInit` hook seeds demo data via `apps/web/src/lib/seed-demo.ts`:
+
+- Creates `demo@demo.com` / `demodemo` user
+- Creates "Demo Website" (`demo.example.com`)
+- Generates ~1500 analytics events with realistic patterns
+- Creates 3 demo funnels
+- Login page shows a banner with demo credentials
+
+All seeding is **idempotent** — it checks for existing data and skips if already present.
+
+### When database changes are made, you MUST
+
+| Change type                                     | Required action                                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| New/changed PayloadCMS collection fields        | PayloadCMS auto-handles it; for data migrations use `npx payload migrate:create`            |
+| New/changed analytics tables or columns         | Add `.sql` migration in `packages/analytics/drizzle/`, update Drizzle schema in `tables.ts` |
+| New collection or field visible in demo         | Update `apps/web/src/lib/seed-demo.ts` to seed demo data for it                             |
+| Removed collection/field used by demo seed      | Update `apps/web/src/lib/seed-demo.ts` to remove references                                 |
+| Changed `scripts/seed-demo.mjs` data generation | Mirror relevant changes in `apps/web/src/lib/seed-demo.ts` (server-side equivalent)         |
+
+### Startup sequence (production / k8s)
+
+```
+Pod starts → PostgreSQL connects →
+  PayloadCMS auto-creates/migrates its tables →
+  onInit: runMigrations() applies analytics SQL migrations →
+  onInit (if DEMO_MODE=true): seedDemoData() creates demo user + website + events →
+  App ready to serve requests
+```
+
 ## Documentation Sync
 
 When changes are made to this repository that affect user-facing behavior, **also update the documentation** in the companion `tidemeter-website/` repository:
