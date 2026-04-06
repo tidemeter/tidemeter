@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnalyticsRepository } from "@/lib/analytics";
+import { requireWebsiteAccess } from "@/lib/auth";
 import { parseDateRange, parseFilters } from "@/lib/utils/date";
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { headers } from "next/headers";
 import type { FunnelStepDefinition } from "@tidemeter/analytics";
 
 interface RouteParams {
@@ -12,6 +12,10 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { websiteId } = await params;
+
+  const auth = await requireWebsiteAccess(websiteId);
+  if ("error" in auth) return auth.error;
+
   const searchParams = request.nextUrl.searchParams;
   const funnelId = searchParams.get("funnelId");
 
@@ -27,11 +31,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   try {
     const payload = await getPayload({ config });
-    const hdrs = await headers();
-    const { user } = await payload.auth({ headers: hdrs });
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Fetch funnel definition
     const funnel = await payload.findByID({

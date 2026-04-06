@@ -1,8 +1,9 @@
-import type { PageEvent, AnalyticsRepository } from '@tidemeter/analytics';
-import { getAnalyticsRepository } from '@/lib/analytics';
+import type { PageEvent, AnalyticsRepository } from "@tidemeter/analytics";
+import { getAnalyticsRepository } from "@/lib/analytics";
 
 const FLUSH_SIZE = 100;
 const FLUSH_INTERVAL_MS = 5000;
+const MAX_BUFFER_SIZE = 10_000;
 
 class EventBuffer {
   private buffer: PageEvent[] = [];
@@ -13,9 +14,9 @@ class EventBuffer {
     this.startTimer();
 
     // Graceful shutdown
-    if (typeof process !== 'undefined') {
-      process.on('SIGTERM', () => this.flush());
-      process.on('SIGINT', () => this.flush());
+    if (typeof process !== "undefined") {
+      process.on("SIGTERM", () => this.flush());
+      process.on("SIGINT", () => this.flush());
     }
   }
 
@@ -34,7 +35,7 @@ class EventBuffer {
     }, FLUSH_INTERVAL_MS);
 
     // Don't prevent Node.js from exiting
-    if (this.timer && typeof this.timer === 'object' && 'unref' in this.timer) {
+    if (this.timer && typeof this.timer === "object" && "unref" in this.timer) {
       this.timer.unref();
     }
   }
@@ -50,9 +51,19 @@ class EventBuffer {
       const repo = await getAnalyticsRepository();
       await repo.insertEvents(events);
     } catch (error) {
-      console.error(`[EventBuffer] Failed to flush ${events.length} events:`, error);
-      // Put events back in buffer for retry
+      console.error(
+        `[EventBuffer] Failed to flush ${events.length} events:`,
+        error,
+      );
+      // Put events back in buffer for retry, but cap to prevent OOM
       this.buffer.unshift(...events);
+      if (this.buffer.length > MAX_BUFFER_SIZE) {
+        const dropped = this.buffer.length - MAX_BUFFER_SIZE;
+        this.buffer = this.buffer.slice(0, MAX_BUFFER_SIZE);
+        console.warn(
+          `[EventBuffer] Dropped ${dropped} oldest events (buffer full)`,
+        );
+      }
     } finally {
       this.flushing = false;
     }

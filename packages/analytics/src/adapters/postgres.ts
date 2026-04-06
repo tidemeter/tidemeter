@@ -16,6 +16,11 @@ import {
   inArray,
 } from "drizzle-orm";
 import { pageEvents, sessions, visitorIdentities } from "../schema/tables.js";
+
+/** Escape LIKE wildcard characters so user input is treated literally. */
+function escapeLike(value: string): string {
+  return value.replace(/[%_\\]/g, "\\$&");
+}
 import type {
   AnalyticsRepository,
   PageEvent,
@@ -97,7 +102,7 @@ export class PostgresAnalyticsRepository implements AnalyticsRepository {
           case "neq":
             return ne(col, f.value);
           case "contains":
-            return like(col, `%${f.value}%`);
+            return like(col, `%${escapeLike(f.value)}%`);
           default:
             return eq(col, f.value);
         }
@@ -132,7 +137,7 @@ export class PostgresAnalyticsRepository implements AnalyticsRepository {
           case "neq":
             return ne(col, f.value);
           case "contains":
-            return like(col, `%${f.value}%`);
+            return like(col, `%${escapeLike(f.value)}%`);
           default:
             return eq(col, f.value);
         }
@@ -503,7 +508,7 @@ export class PostgresAnalyticsRepository implements AnalyticsRepository {
     const offset = (page - 1) * pageSize;
 
     const searchCondition = search
-      ? like(sessions.visitorId, `%${search}%`)
+      ? like(sessions.visitorId, `%${escapeLike(search)}%`)
       : undefined;
 
     // Count total distinct visitors

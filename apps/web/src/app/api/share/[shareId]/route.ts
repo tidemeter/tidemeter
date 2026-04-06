@@ -3,6 +3,30 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getAnalyticsRepository } from "@/lib/analytics";
 import { parseDateRange, inferInterval } from "@/lib/utils/date";
+import type { BreakdownProperty } from "@tidemeter/analytics";
+
+const VALID_BREAKDOWN_PROPERTIES = new Set<BreakdownProperty>([
+  "url_path",
+  "referrer_domain",
+  "country",
+  "region",
+  "city",
+  "browser",
+  "browser_version",
+  "os",
+  "os_version",
+  "device_type",
+  "screen_size",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "entry_page",
+  "exit_page",
+  "hostname",
+  "page_title",
+]);
 
 interface RouteParams {
   params: Promise<{ shareId: string }>;
@@ -57,10 +81,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
       }
       case "breakdown": {
-        const property = searchParams.get("property") || "urlPath";
+        const property = searchParams.get("property") || "url_path";
+        if (!VALID_BREAKDOWN_PROPERTIES.has(property as BreakdownProperty)) {
+          return NextResponse.json(
+            { error: "Invalid property" },
+            { status: 400 },
+          );
+        }
         const data = await repo.getBreakdown(
           { websiteId: String(website.id), dateRange },
-          property as Parameters<typeof repo.getBreakdown>[1],
+          property as BreakdownProperty,
           10,
         );
         return NextResponse.json(data, {

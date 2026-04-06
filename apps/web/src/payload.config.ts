@@ -31,7 +31,13 @@ export default buildConfig({
 
   editor: lexicalEditor(),
 
-  secret: process.env.PAYLOAD_SECRET || "CHANGE_ME_IN_PRODUCTION",
+  secret: (() => {
+    const s = process.env.PAYLOAD_SECRET;
+    if (!s && process.env.NODE_ENV === "production") {
+      throw new Error("PAYLOAD_SECRET must be set in production");
+    }
+    return s || "dev-only-insecure-secret-change-me";
+  })(),
 
   onInit: async (payload) => {
     const analyticsDbUrl =

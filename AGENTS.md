@@ -92,6 +92,8 @@ The Docker image is built on GitHub Actions **without any database connection**.
 - **No `.js` extensions** in TypeScript imports (Turbopack doesn't resolve them)
 - **Tailwind CSS 4** with CSS-first config (`@theme` in globals.css, no tailwind.config)
 - Components use `cn()` utility from `@tidemeter/ui` for class merging
+- **Code quality** — keep code well-structured, as simple as possible, readable, and easy to understand
+- **Security first** — every code change must be reviewed with security in mind; consider OWASP Top 10 risks (injection, broken auth, data exposure, etc.) and validate all inputs at system boundaries
 
 ## Directory Structure
 

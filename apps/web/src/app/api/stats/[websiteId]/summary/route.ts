@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnalyticsRepository } from "@/lib/analytics";
+import { requireWebsiteAccess } from "@/lib/auth";
 import { parseDateRange, parseFilters } from "@/lib/utils/date";
 
 interface RouteParams {
@@ -8,6 +9,10 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { websiteId } = await params;
+
+  const auth = await requireWebsiteAccess(websiteId);
+  if ("error" in auth) return auth.error;
+
   const searchParams = request.nextUrl.searchParams;
   const dateRange = parseDateRange(searchParams);
   const filters = parseFilters(searchParams);

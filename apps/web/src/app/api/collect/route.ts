@@ -4,13 +4,13 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { processEvent } from "@/lib/ingestion/processor";
 
-// Cache valid website IDs for 5 minutes to avoid DB lookups on every event
-const websiteCache = new Map<string, number>();
+// Cache valid website IDs and domains for 5 minutes to avoid DB lookups on every event
+const websiteCache = new Map<string, { timestamp: number; domain: string }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-async function isValidWebsite(websiteId: string): Promise<boolean> {
+async function getWebsiteDomain(websiteId: string): Promise<string | null> {
   const cached = websiteCache.get(websiteId);
-  if (cached && Date.now() - cached < CACHE_TTL) return true;
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.domain;
 
   try {
     const payload = await getPayload({ config });
@@ -21,13 +21,14 @@ async function isValidWebsite(websiteId: string): Promise<boolean> {
       depth: 0,
     });
     if (result.docs.length > 0) {
-      websiteCache.set(websiteId, Date.now());
-      return true;
+      const domain = (result.docs[0] as { domain: string }).domain;
+      websiteCache.set(websiteId, { timestamp: Date.now(), domain });
+      return domain;
     }
   } catch {
     // If DB is unavailable, reject — fail closed
   }
-  return false;
+  return null;
 }
 
 const collectSchema = z.object({
@@ -48,8 +49,28 @@ export async function POST(request: NextRequest) {
     const payload = collectSchema.parse(body);
 
     // Validate the website exists and is active
-    if (!(await isValidWebsite(payload.websiteId))) {
+    const websiteDomain = await getWebsiteDomain(payload.websiteId);
+    if (!websiteDomain) {
       return NextResponse.json({ error: "Invalid website" }, { status: 403 });
+    }
+
+    // Validate origin matches the registered domain (anti-spam)
+    const origin = request.headers.get("origin") || "";
+    if (origin) {
+      try {
+        const originHost = new URL(origin).hostname;
+        if (
+          originHost !== websiteDomain &&
+          !originHost.endsWith(`.${websiteDomain}`)
+        ) {
+          return NextResponse.json(
+            { error: "Origin mismatch" },
+            { status: 403 },
+          );
+        }
+      } catch {
+        // Malformed origin header — allow (server-side calls may lack origin)
+      }
     }
 
     const ip =

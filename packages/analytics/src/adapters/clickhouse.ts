@@ -174,7 +174,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
       .filter((f) => columns[f.property])
       .map((f) => {
         const col = columns[f.property];
-        const escaped = f.value.replace(/'/g, "\\'");
+        const escaped = f.value.replace(/'/g, "\\'").replace(/[%_\\]/g, "\\$&");
         switch (f.operator) {
           case "eq":
             return `AND ${col} = '${escaped}'`;

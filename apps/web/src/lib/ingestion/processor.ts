@@ -28,8 +28,11 @@ function isBot(userAgent: string): boolean {
 
 function getDailySalt(): string {
   const today = new Date().toISOString().split("T")[0];
-  const secret = process.env.SESSION_SALT_SECRET || "default-salt";
-  return `${secret}-${today}`;
+  const secret = process.env.SESSION_SALT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SALT_SECRET must be set in production");
+  }
+  return `${secret || "dev-only-insecure-salt"}-${today}`;
 }
 
 function hashVisitorId(
