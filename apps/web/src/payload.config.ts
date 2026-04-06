@@ -31,15 +31,13 @@ export default buildConfig({
 
   editor: lexicalEditor(),
 
-  secret: (() => {
-    const s = process.env.PAYLOAD_SECRET;
-    if (!s && process.env.NODE_ENV === "production") {
-      throw new Error("PAYLOAD_SECRET must be set in production");
-    }
-    return s || "dev-only-insecure-secret-change-me";
-  })(),
+  secret: process.env.PAYLOAD_SECRET || "dev-only-insecure-secret-change-me",
 
   onInit: async (payload) => {
+    if (process.env.NODE_ENV === "production" && !process.env.PAYLOAD_SECRET) {
+      throw new Error("PAYLOAD_SECRET must be set in production");
+    }
+
     const analyticsDbUrl =
       process.env.ANALYTICS_DATABASE_URL || process.env.DATABASE_URL || "";
     if (analyticsDbUrl) {
