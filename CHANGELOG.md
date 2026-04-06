@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.3...tidemeter-v0.1.4) (2026-04-05)
+
+
+### Bug Fixes
+
+* demo account, and cards on dashboard ([4925d68](https://github.com/tidemeter/tidemeter/commit/4925d6899076402af6081d103e4ce44a31737939))
+
 ## [0.1.3](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.2...tidemeter-v0.1.3) (2026-04-05)
 
 
