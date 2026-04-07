@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.4...tidemeter-v0.1.5) (2026-04-06)
+
+
+### Bug Fixes
+
+* buil ([1fcee66](https://github.com/tidemeter/tidemeter/commit/1fcee6655841b91aabdab97a4e2ef0bd02d8ef91))
+* improve auth, validation, and request handling ([94ce7ff](https://github.com/tidemeter/tidemeter/commit/94ce7ffb5842403589f95ad739881efb75daf92c))
+
 ## [0.1.4](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.3...tidemeter-v0.1.4) (2026-04-05)
 
 
