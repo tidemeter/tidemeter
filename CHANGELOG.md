@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.5...tidemeter-v0.1.6) (2026-04-07)
+
+
+### Bug Fixes
+
+* clickhouse integration improvements ([8783484](https://github.com/tidemeter/tidemeter/commit/878348417ef6564647d8f8d7b7a30ec5203d95fc))
+
 ## [0.1.5](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.4...tidemeter-v0.1.5) (2026-04-06)
 
 
