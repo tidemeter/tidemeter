@@ -59,6 +59,8 @@ COPY --from=builder /app/packages/tracker/dist/t.js ./apps/web/public/t.js
 
 # Copy analytics SQL migration files (read at runtime by migrate.ts via fs)
 COPY --from=builder /app/packages/analytics/drizzle ./packages/analytics/drizzle
+# Copy ClickHouse migration files (read at runtime by migrate-clickhouse.ts)
+COPY --from=builder /app/packages/analytics/clickhouse ./packages/analytics/clickhouse
 
 USER tidemeter
 

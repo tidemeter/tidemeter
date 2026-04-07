@@ -12,9 +12,13 @@ import type {
   BreakdownProperty,
   BreakdownItem,
   DateRange,
+  VisitorSummary,
   VisitorListResult,
   VisitorProfileResult,
   VisitorSession,
+  VisitorDevice,
+  ActivityHeatmapPoint,
+  JourneyStep,
   FunnelQuery,
   FunnelResult,
   FunnelStepResult,
@@ -46,79 +50,10 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
   }
 
   async initialize(): Promise<void> {
+    // Schema creation is handled by clickhouse-migrations in onInit.
+    // This method ensures the database exists as a safety net.
     await this.client.command({
       query: `CREATE DATABASE IF NOT EXISTS ${this.database}`,
-    });
-
-    await this.client.command({
-      query: `
-        CREATE TABLE IF NOT EXISTS ${this.database}.page_events (
-          id UUID DEFAULT generateUUIDv4(),
-          website_id UUID,
-          session_id String,
-          visitor_id String,
-          timestamp DateTime('UTC'),
-          event_name LowCardinality(String) DEFAULT 'pageview',
-          url_path String DEFAULT '/',
-          url_query String DEFAULT '',
-          referrer_path String DEFAULT '',
-          referrer_domain LowCardinality(String) DEFAULT '',
-          utm_source LowCardinality(String) DEFAULT '',
-          utm_medium LowCardinality(String) DEFAULT '',
-          utm_campaign LowCardinality(String) DEFAULT '',
-          utm_content String DEFAULT '',
-          utm_term String DEFAULT '',
-          country LowCardinality(String) DEFAULT '',
-          region LowCardinality(String) DEFAULT '',
-          city String DEFAULT '',
-          browser LowCardinality(String) DEFAULT '',
-          browser_version LowCardinality(String) DEFAULT '',
-          os LowCardinality(String) DEFAULT '',
-          os_version LowCardinality(String) DEFAULT '',
-          device_type LowCardinality(String) DEFAULT 'desktop',
-          screen_size LowCardinality(String) DEFAULT '',
-          page_title String DEFAULT '',
-          hostname LowCardinality(String) DEFAULT '',
-          custom_data String DEFAULT '{}'
-        )
-        ENGINE = MergeTree()
-        PARTITION BY toYYYYMM(timestamp)
-        ORDER BY (website_id, timestamp, visitor_id)
-      `,
-    });
-
-    await this.client.command({
-      query: `
-        CREATE TABLE IF NOT EXISTS ${this.database}.sessions (
-          id String,
-          website_id UUID,
-          visitor_id String,
-          started_at DateTime('UTC'),
-          ended_at DateTime('UTC'),
-          duration UInt32 DEFAULT 0,
-          entry_page String DEFAULT '/',
-          exit_page String DEFAULT '/',
-          pageviews UInt32 DEFAULT 1,
-          events UInt32 DEFAULT 0,
-          is_bounce UInt8 DEFAULT 1,
-          referrer_domain LowCardinality(String) DEFAULT '',
-          referrer_path String DEFAULT '',
-          utm_source LowCardinality(String) DEFAULT '',
-          utm_medium LowCardinality(String) DEFAULT '',
-          utm_campaign LowCardinality(String) DEFAULT '',
-          country LowCardinality(String) DEFAULT '',
-          region LowCardinality(String) DEFAULT '',
-          city String DEFAULT '',
-          browser LowCardinality(String) DEFAULT '',
-          os LowCardinality(String) DEFAULT '',
-          device_type LowCardinality(String) DEFAULT 'desktop',
-          screen_size LowCardinality(String) DEFAULT '',
-          sign Int8 DEFAULT 1
-        )
-        ENGINE = CollapsingMergeTree(sign)
-        PARTITION BY toYYYYMM(started_at)
-        ORDER BY (website_id, started_at, id)
-      `,
     });
   }
 
@@ -537,41 +472,496 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
     return Number(rows[0]?.count ?? 0);
   }
 
-  // ── User Journey Methods (stubs) ────────────────────────────────
+  // ── User Journey Methods ─────────────────────────────────────────
+
+  /**
+   * Resolve all visitorIds linked to the same real user via visitor_identities.
+   * Always returns at least the original visitorId.
+   */
+  private async resolveVisitorIds(
+    websiteId: string,
+    visitorId: string,
+  ): Promise<string[]> {
+    // Step 1: Find userId(s) linked to this visitorId
+    const userIdResult = await this.client.query({
+      query: `
+        SELECT DISTINCT user_id
+        FROM visitor_identities FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id = {visitorId:String}
+      `,
+      query_params: { websiteId, visitorId },
+      format: "JSONEachRow",
+    });
+    const userIdRows = await userIdResult.json<{ user_id: string }>();
+
+    if (userIdRows.length === 0) return [visitorId];
+
+    // Step 2: Find all visitorIds linked to those userIds
+    const userIds = userIdRows.map((r) => r.user_id);
+    const linkedResult = await this.client.query({
+      query: `
+        SELECT DISTINCT visitor_id
+        FROM visitor_identities FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND user_id IN ({userIds:Array(String)})
+      `,
+      query_params: { websiteId, userIds },
+      format: "JSONEachRow",
+    });
+    const linkedRows = await linkedResult.json<{ visitor_id: string }>();
+
+    const ids = new Set([visitorId, ...linkedRows.map((r) => r.visitor_id)]);
+    return [...ids];
+  }
 
   async linkVisitorIdentity(
-    _websiteId: string,
-    _visitorId: string,
-    _userId: string,
+    websiteId: string,
+    visitorId: string,
+    userId: string,
   ): Promise<void> {
-    // TODO: implement ClickHouse visitor identity linking
+    // ReplacingMergeTree deduplicates on ORDER BY (website_id, visitor_id, user_id)
+    await this.client.insert({
+      table: "visitor_identities",
+      values: [
+        {
+          website_id: websiteId,
+          visitor_id: visitorId,
+          user_id: userId,
+          linked_at: Math.floor(Date.now() / 1000),
+        },
+      ],
+      format: "JSONEachRow",
+    });
   }
 
   async getVisitors(
-    _websiteId: string,
-    _dateRange: DateRange,
+    websiteId: string,
+    dateRange: DateRange,
     page: number,
     pageSize: number,
-    _search?: string,
+    search?: string,
   ): Promise<VisitorListResult> {
-    return { data: [], total: 0, page, pageSize };
+    const offset = (page - 1) * pageSize;
+    const from = Math.floor(dateRange.from.getTime() / 1000);
+    const to = Math.floor(dateRange.to.getTime() / 1000);
+
+    const searchClause = search
+      ? `AND visitor_id LIKE '%${escapeCh(search)}%'`
+      : "";
+
+    // Count total distinct visitors
+    const totalResult = await this.client.query({
+      query: `
+        SELECT uniqExact(visitor_id) as total
+        FROM sessions FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND started_at >= {from:DateTime}
+          AND started_at <= {to:DateTime}
+          AND sign = 1
+          ${searchClause}
+      `,
+      query_params: { websiteId, from, to },
+      format: "JSONEachRow",
+    });
+    const totalRows = await totalResult.json<{ total: string }>();
+    const total = Number(totalRows[0]?.total ?? 0);
+
+    // Get paginated visitor summaries from sessions
+    const visitorsResult = await this.client.query({
+      query: `
+        SELECT
+          visitor_id,
+          min(started_at) as first_seen,
+          max(ended_at) as last_seen,
+          count() as total_sessions,
+          sum(pageviews) as total_pageviews,
+          sum(events) as total_events,
+          avg(duration) as avg_duration,
+          anyLast(country) as last_country,
+          anyLast(city) as last_city,
+          groupUniqArray(device_type) as devices,
+          groupUniqArray(browser) as browsers,
+          groupUniqArray(os) as operating_systems
+        FROM sessions FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND started_at >= {from:DateTime}
+          AND started_at <= {to:DateTime}
+          AND sign = 1
+          ${searchClause}
+        GROUP BY visitor_id
+        ORDER BY max(ended_at) DESC
+        LIMIT {pageSize:UInt32}
+        OFFSET {offset:UInt32}
+      `,
+      query_params: { websiteId, from, to, pageSize, offset },
+      format: "JSONEachRow",
+    });
+
+    const visitors = await visitorsResult.json<{
+      visitor_id: string;
+      first_seen: string;
+      last_seen: string;
+      total_sessions: string;
+      total_pageviews: string;
+      total_events: string;
+      avg_duration: string;
+      last_country: string;
+      last_city: string;
+      devices: string[];
+      browsers: string[];
+      operating_systems: string[];
+    }>();
+
+    // Batch resolve userIds from visitor_identities
+    const visitorIds = visitors.map((v) => v.visitor_id);
+    const identityMap = new Map<string, string>();
+    if (visitorIds.length > 0) {
+      const identityResult = await this.client.query({
+        query: `
+          SELECT visitor_id, user_id
+          FROM visitor_identities FINAL
+          WHERE website_id = {websiteId:UUID}
+            AND visitor_id IN ({visitorIds:Array(String)})
+        `,
+        query_params: { websiteId, visitorIds },
+        format: "JSONEachRow",
+      });
+      const identityRows = await identityResult.json<{
+        visitor_id: string;
+        user_id: string;
+      }>();
+      for (const row of identityRows) {
+        identityMap.set(row.visitor_id, row.user_id);
+      }
+    }
+
+    const data: VisitorSummary[] = visitors.map((row) => ({
+      visitorId: row.visitor_id,
+      userId: identityMap.get(row.visitor_id),
+      firstSeen: row.first_seen,
+      lastSeen: row.last_seen,
+      totalSessions: Number(row.total_sessions),
+      totalPageviews: Number(row.total_pageviews),
+      totalEvents: Number(row.total_events),
+      avgSessionDuration: Number(row.avg_duration),
+      lastCountry: row.last_country || "",
+      lastCity: row.last_city || "",
+      devices: (row.devices || []).filter(Boolean),
+      browsers: (row.browsers || []).filter(Boolean),
+      operatingSystems: (row.operating_systems || []).filter(Boolean),
+    }));
+
+    return { data, total, page, pageSize };
   }
 
   async getVisitorProfile(
-    _websiteId: string,
-    _visitorId: string,
-    _dateRange: DateRange,
+    websiteId: string,
+    visitorId: string,
+    dateRange: DateRange,
   ): Promise<VisitorProfileResult | null> {
-    return null;
+    const visitorIds = await this.resolveVisitorIds(websiteId, visitorId);
+    const from = Math.floor(dateRange.from.getTime() / 1000);
+    const to = Math.floor(dateRange.to.getTime() / 1000);
+
+    // Aggregated visitor summary from sessions
+    const summaryResult = await this.client.query({
+      query: `
+        SELECT
+          min(started_at) as first_seen,
+          max(ended_at) as last_seen,
+          count() as total_sessions,
+          sum(pageviews) as total_pageviews,
+          sum(events) as total_events,
+          avg(duration) as avg_duration,
+          anyLast(country) as last_country,
+          anyLast(city) as last_city,
+          groupUniqArray(device_type) as devices,
+          groupUniqArray(browser) as browsers,
+          groupUniqArray(os) as operating_systems
+        FROM sessions FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id IN ({visitorIds:Array(String)})
+          AND sign = 1
+      `,
+      query_params: { websiteId, visitorIds },
+      format: "JSONEachRow",
+    });
+
+    const summaryRows = await summaryResult.json<{
+      first_seen: string;
+      last_seen: string;
+      total_sessions: string;
+      total_pageviews: string;
+      total_events: string;
+      avg_duration: string;
+      last_country: string;
+      last_city: string;
+      devices: string[];
+      browsers: string[];
+      operating_systems: string[];
+    }>();
+
+    const row = summaryRows[0];
+    if (!row || !row.first_seen || row.first_seen === "1970-01-01 00:00:00")
+      return null;
+
+    // Resolve userId
+    const identityResult = await this.client.query({
+      query: `
+        SELECT user_id
+        FROM visitor_identities FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id IN ({visitorIds:Array(String)})
+        LIMIT 1
+      `,
+      query_params: { websiteId, visitorIds },
+      format: "JSONEachRow",
+    });
+    const identityRows = await identityResult.json<{ user_id: string }>();
+
+    const visitor: VisitorSummary = {
+      visitorId,
+      userId: identityRows[0]?.user_id,
+      firstSeen: row.first_seen,
+      lastSeen: row.last_seen,
+      totalSessions: Number(row.total_sessions),
+      totalPageviews: Number(row.total_pageviews),
+      totalEvents: Number(row.total_events),
+      avgSessionDuration: Number(row.avg_duration),
+      lastCountry: row.last_country || "",
+      lastCity: row.last_city || "",
+      devices: (row.devices || []).filter(Boolean),
+      browsers: (row.browsers || []).filter(Boolean),
+      operatingSystems: (row.operating_systems || []).filter(Boolean),
+    };
+
+    // Device breakdown
+    const deviceResult = await this.client.query({
+      query: `
+        SELECT
+          device_type,
+          browser,
+          os,
+          screen_size,
+          count() as session_count,
+          max(ended_at) as last_seen
+        FROM sessions FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id IN ({visitorIds:Array(String)})
+          AND sign = 1
+        GROUP BY device_type, browser, os, screen_size
+        ORDER BY session_count DESC
+      `,
+      query_params: { websiteId, visitorIds },
+      format: "JSONEachRow",
+    });
+
+    const deviceRows = await deviceResult.json<{
+      device_type: string;
+      browser: string;
+      os: string;
+      screen_size: string;
+      session_count: string;
+      last_seen: string;
+    }>();
+
+    const devices: VisitorDevice[] = deviceRows.map((d) => ({
+      deviceType: d.device_type,
+      browser: d.browser,
+      os: d.os,
+      screenSize: d.screen_size,
+      sessions: Number(d.session_count),
+      lastSeen: d.last_seen,
+    }));
+
+    // Activity heatmap (day-of-week × hour)
+    const heatmapResult = await this.client.query({
+      query: `
+        SELECT
+          toDayOfWeek(timestamp, 0) as day_of_week,
+          toHour(timestamp) as hour,
+          count() as event_count
+        FROM page_events
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id IN ({visitorIds:Array(String)})
+          AND timestamp >= {from:DateTime}
+          AND timestamp <= {to:DateTime}
+        GROUP BY day_of_week, hour
+      `,
+      query_params: { websiteId, visitorIds, from, to },
+      format: "JSONEachRow",
+    });
+
+    const heatmapRows = await heatmapResult.json<{
+      day_of_week: string;
+      hour: string;
+      event_count: string;
+    }>();
+
+    const activityHeatmap: ActivityHeatmapPoint[] = heatmapRows.map((h) => ({
+      // toDayOfWeek with mode=0 returns 1=Monday..7=Sunday
+      // PostgreSQL EXTRACT(DOW) returns 0=Sunday..6=Saturday
+      // Convert: CH 7(Sun) -> 0, CH 1(Mon) -> 1, ... CH 6(Sat) -> 6
+      dayOfWeek: Number(h.day_of_week) === 7 ? 0 : Number(h.day_of_week),
+      hour: Number(h.hour),
+      count: Number(h.event_count),
+    }));
+
+    // Recent sessions with journey
+    const recentSessions = await this.getVisitorSessions(
+      websiteId,
+      visitorId,
+      dateRange,
+      20,
+    );
+
+    return { visitor, devices, recentSessions, activityHeatmap };
   }
 
   async getVisitorSessions(
-    _websiteId: string,
-    _visitorId: string,
-    _dateRange: DateRange,
-    _limit?: number,
+    websiteId: string,
+    visitorId: string,
+    dateRange: DateRange,
+    limit = 50,
   ): Promise<VisitorSession[]> {
-    return [];
+    const visitorIds = await this.resolveVisitorIds(websiteId, visitorId);
+    const from = Math.floor(dateRange.from.getTime() / 1000);
+    const to = Math.floor(dateRange.to.getTime() / 1000);
+
+    // Fetch sessions
+    const sessionsResult = await this.client.query({
+      query: `
+        SELECT *
+        FROM sessions FINAL
+        WHERE website_id = {websiteId:UUID}
+          AND visitor_id IN ({visitorIds:Array(String)})
+          AND started_at >= {from:DateTime}
+          AND started_at <= {to:DateTime}
+          AND sign = 1
+        ORDER BY started_at DESC
+        LIMIT {limit:UInt32}
+      `,
+      query_params: { websiteId, visitorIds, from, to, limit },
+      format: "JSONEachRow",
+    });
+
+    const sessionRows = await sessionsResult.json<{
+      id: string;
+      started_at: string;
+      ended_at: string;
+      duration: number;
+      entry_page: string;
+      exit_page: string;
+      pageviews: number;
+      events: number;
+      is_bounce: number;
+      referrer_domain: string;
+      utm_source: string;
+      country: string;
+      city: string;
+      browser: string;
+      os: string;
+      device_type: string;
+      screen_size: string;
+    }>();
+
+    if (sessionRows.length === 0) return [];
+
+    // Fetch all page events for these sessions
+    const sessionIds = sessionRows.map((s) => s.id);
+    const eventsResult = await this.client.query({
+      query: `
+        SELECT
+          session_id,
+          timestamp,
+          event_name,
+          url_path,
+          page_title,
+          referrer_path,
+          custom_data
+        FROM page_events
+        WHERE website_id = {websiteId:UUID}
+          AND session_id IN ({sessionIds:Array(String)})
+        ORDER BY timestamp ASC
+      `,
+      query_params: { websiteId, sessionIds },
+      format: "JSONEachRow",
+    });
+
+    const allEvents = await eventsResult.json<{
+      session_id: string;
+      timestamp: string;
+      event_name: string;
+      url_path: string;
+      page_title: string;
+      referrer_path: string;
+      custom_data: string;
+    }>();
+
+    // Group events by session
+    const eventsBySession = new Map<string, typeof allEvents>();
+    for (const ev of allEvents) {
+      const list = eventsBySession.get(ev.session_id) ?? [];
+      list.push(ev);
+      eventsBySession.set(ev.session_id, list);
+    }
+
+    // Build result with journey steps
+    return sessionRows.map((sess) => {
+      const events = eventsBySession.get(sess.id) ?? [];
+
+      const steps: JourneyStep[] = events.map((ev, i) => {
+        const nextTs = i < events.length - 1 ? events[i + 1].timestamp : null;
+        const duration =
+          nextTs && ev.timestamp
+            ? Math.round(
+                (new Date(nextTs).getTime() -
+                  new Date(ev.timestamp).getTime()) /
+                  1000,
+              )
+            : 0;
+
+        let customData: Record<string, string | number | boolean> | undefined;
+        try {
+          const parsed = JSON.parse(ev.custom_data || "{}");
+          if (Object.keys(parsed).length > 0) customData = parsed;
+        } catch {
+          // ignore invalid JSON
+        }
+
+        return {
+          timestamp: ev.timestamp,
+          eventName: ev.event_name,
+          urlPath: ev.url_path,
+          pageTitle: ev.page_title,
+          referrerPath: ev.referrer_path,
+          duration,
+          customData,
+        };
+      });
+
+      return {
+        sessionId: sess.id,
+        startedAt: sess.started_at,
+        endedAt: sess.ended_at,
+        duration: sess.duration,
+        entryPage: sess.entry_page,
+        exitPage: sess.exit_page,
+        pageviews: sess.pageviews,
+        events: sess.events,
+        isBounce: sess.is_bounce === 1,
+        referrerDomain: sess.referrer_domain,
+        utmSource: sess.utm_source,
+        country: sess.country,
+        city: sess.city,
+        browser: sess.browser,
+        os: sess.os,
+        deviceType: sess.device_type,
+        screenSize: sess.screen_size,
+        steps,
+      };
+    });
   }
 
   // ── Funnel Analysis ───────────────────────────────────────────────

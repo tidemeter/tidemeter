@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "^1.18.2",
+    "clickhouse-migrations": "^1.2.0",
     "drizzle-orm": "^0.38.4",
     "postgres": "^3.4.8"
   },

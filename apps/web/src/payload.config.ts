@@ -3,7 +3,7 @@ import path from "path";
 import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import { runMigrations } from "@tidemeter/analytics";
+import { runMigrations, runClickHouseMigrations } from "@tidemeter/analytics";
 import { seedDemoData } from "./lib/seed-demo";
 import { Users } from "./payload/collections/users";
 import { Websites } from "./payload/collections/websites";
@@ -38,13 +38,28 @@ export default buildConfig({
       throw new Error("PAYLOAD_SECRET must be set in production");
     }
 
-    const analyticsDbUrl =
-      process.env.ANALYTICS_DATABASE_URL || process.env.DATABASE_URL || "";
-    if (analyticsDbUrl) {
+    const analyticsDbType = process.env.ANALYTICS_DB_TYPE || "postgresql";
+
+    if (analyticsDbType === "clickhouse") {
       try {
-        await runMigrations(analyticsDbUrl);
+        await runClickHouseMigrations({
+          url: process.env.CLICKHOUSE_URL || "http://localhost:8123",
+          database: process.env.CLICKHOUSE_DATABASE || "tidemeter_analytics",
+          username: process.env.CLICKHOUSE_USER || "default",
+          password: process.env.CLICKHOUSE_PASSWORD || "",
+        });
       } catch (err) {
-        console.error("[payload:onInit] Analytics migration failed:", err);
+        console.error("[payload:onInit] ClickHouse migration failed:", err);
+      }
+    } else {
+      const analyticsDbUrl =
+        process.env.ANALYTICS_DATABASE_URL || process.env.DATABASE_URL || "";
+      if (analyticsDbUrl) {
+        try {
+          await runMigrations(analyticsDbUrl);
+        } catch (err) {
+          console.error("[payload:onInit] Analytics migration failed:", err);
+        }
       }
     }
 

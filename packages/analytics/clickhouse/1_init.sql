@@ -1,7 +1,6 @@
--- TideMeter ClickHouse initialization
-CREATE DATABASE IF NOT EXISTS tidemeter_analytics;
+-- TideMeter ClickHouse initial schema: page_events + sessions
 
-CREATE TABLE IF NOT EXISTS tidemeter_analytics.page_events (
+CREATE TABLE IF NOT EXISTS page_events (
     id UUID DEFAULT generateUUIDv4(),
     website_id UUID,
     session_id String,
@@ -34,7 +33,7 @@ ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
 ORDER BY (website_id, timestamp, visitor_id);
 
-CREATE TABLE IF NOT EXISTS tidemeter_analytics.sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id String,
     website_id UUID,
     visitor_id String,
@@ -63,13 +62,3 @@ CREATE TABLE IF NOT EXISTS tidemeter_analytics.sessions (
 ENGINE = CollapsingMergeTree(sign)
 PARTITION BY toYYYYMM(started_at)
 ORDER BY (website_id, started_at, id);
-
-CREATE TABLE IF NOT EXISTS tidemeter_analytics.visitor_identities (
-    id UUID DEFAULT generateUUIDv4(),
-    website_id UUID,
-    visitor_id String,
-    user_id String,
-    linked_at DateTime('UTC') DEFAULT now()
-)
-ENGINE = ReplacingMergeTree(linked_at)
-ORDER BY (website_id, visitor_id, user_id);

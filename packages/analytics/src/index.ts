@@ -32,6 +32,10 @@ export type {
 export { createAnalyticsRepository, type AnalyticsConfig } from "./factory.js";
 export { runMigrations } from "./migrate.js";
 export {
+  runClickHouseMigrations,
+  type ClickHouseMigrationConfig,
+} from "./migrate-clickhouse.js";
+export {
   seedAnalyticsData,
   hasAnalyticsData,
   type SeedAnalyticsInput,

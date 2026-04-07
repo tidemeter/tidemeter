@@ -96,6 +96,9 @@ importers:
       '@clickhouse/client':
         specifier: ^1.18.2
         version: 1.18.2
+      clickhouse-migrations:
+        specifier: ^1.2.0
+        version: 1.2.0
       drizzle-orm:
         specifier: ^0.38.4
         version: 0.38.4(@types/pg@8.10.2)(@types/react@19.2.14)(pg@8.16.3)(postgres@3.4.8)(react@19.2.4)
@@ -2141,6 +2144,11 @@ packages:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
 
+  clickhouse-migrations@1.2.0:
+    resolution: {integrity: sha512-Vtr1ihSx59J67Nr1N+sXiQ9TscwRuzOGvfCPtrA6yHrCabMcu+MKxZKQVuq7yWk83bXq3zpVgiaK7wCW6z4OjQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
 
@@ -2164,6 +2172,10 @@ packages:
 
   colorette@2.0.20:
     resolution: {integrity: sha512-IfEDxwoWIjkeXL1eXcDiow4UbKjhLdq6/EuSVR9GMN7KVH3r9gQ83e73hsz1Nd1T3ijd5xv1wcWRYO+D6kCI2w==}
+
+  commander@14.0.3:
+    resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
+    engines: {node: '>=20'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -5596,6 +5608,11 @@ snapshots:
 
   ci-info@4.4.0: {}
 
+  clickhouse-migrations@1.2.0:
+    dependencies:
+      '@clickhouse/client': 1.18.2
+      commander: 14.0.3
+
   client-only@0.0.1: {}
 
   clsx@2.1.1: {}
@@ -5617,6 +5634,8 @@ snapshots:
       color-string: 1.9.1
 
   colorette@2.0.20: {}
+
+  commander@14.0.3: {}
 
   commander@2.20.3: {}
 
