@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.6...tidemeter-v0.1.7) (2026-04-08)
+
+
+### Bug Fixes
+
+* improve design, and check satus ([8bf72bb](https://github.com/tidemeter/tidemeter/commit/8bf72bb44d790f7397f39cd453b35cca7ba3c1fe))
+
 ## [0.1.6](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.5...tidemeter-v0.1.6) (2026-04-07)
 
 
