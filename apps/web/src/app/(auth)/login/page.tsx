@@ -47,22 +47,22 @@ export default async function LoginPage() {
             <p className="text-center text-sm font-semibold text-primary-800 dark:text-primary-200">
               Demo mode credentials
             </p>
-            <div className="mt-3 space-y-2 rounded-lg bg-white/70 p-3 dark:bg-gray-900/40">
-              <div className="flex items-center justify-between gap-3 rounded-md bg-primary-100/70 px-3 py-2 dark:bg-primary-950/40">
-                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">
-                  Username
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+                <span className="text-xs font-medium uppercase tracking-wide text-primary-600 dark:text-primary-400">
+                  Email
                 </span>
-                <span className="font-mono text-sm font-semibold text-primary-900 dark:text-primary-100">
+                <code className="rounded-md border border-primary-200 bg-white px-2.5 py-1 text-[13px] font-semibold text-primary-900 dark:border-primary-700/40 dark:bg-primary-950/50 dark:text-primary-100">
                   demo@demo.com
-                </span>
+                </code>
               </div>
-              <div className="flex items-center justify-between gap-3 rounded-md bg-primary-100/70 px-3 py-2 dark:bg-primary-950/40">
-                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">
+              <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+                <span className="text-xs font-medium uppercase tracking-wide text-primary-600 dark:text-primary-400">
                   Password
                 </span>
-                <span className="font-mono text-sm font-semibold text-primary-900 dark:text-primary-100">
+                <code className="rounded-md border border-primary-200 bg-white px-2.5 py-1 text-[13px] font-semibold text-primary-900 dark:border-primary-700/40 dark:bg-primary-950/50 dark:text-primary-100">
                   demodemo
-                </span>
+                </code>
               </div>
             </div>
           </div>

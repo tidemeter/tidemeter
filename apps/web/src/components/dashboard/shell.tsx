@@ -358,7 +358,7 @@ export function DashboardShell({
               <button
                 type="button"
                 onClick={() => setSitePickerOpen((prev) => !prev)}
-                className="flex w-full items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-100 px-3 py-2 text-left text-[13px] transition-all hover:bg-gray-200/70 dark:border-gray-700/60 dark:bg-gray-900/80 dark:hover:border-gray-600/60 dark:hover:bg-gray-800/80"
+                className="flex w-full items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-100 px-2 py-2 text-left text-[13px] transition-all hover:bg-gray-200/70 dark:border-gray-700/60 dark:bg-gray-900/80 dark:hover:border-gray-600/60 dark:hover:bg-gray-800/80"
               >
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary-600/10 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
                   <GlobeIcon />

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
+  BarChart,
+  Bar,
   Area,
   XAxis,
   YAxis,
@@ -82,18 +84,31 @@ function ComparisonTooltip({ active, payload, label }: any) {
   );
 }
 
+type ChartStyle = "area" | "bar";
+
 export function TimeSeriesChart({
   data,
   previousData,
   isLoading,
 }: TimeSeriesChartProps) {
   const [mounted, setMounted] = useState(false);
+  const [chartStyle, setChartStyle] = useState<ChartStyle>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("tm-chart-style") as ChartStyle) || "area";
+    }
+    return "area";
+  });
 
   useEffect(() => {
     // Small delay to let the DOM settle before rendering Recharts
     const timer = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(timer);
   }, []);
+
+  function switchStyle(style: ChartStyle) {
+    setChartStyle(style);
+    localStorage.setItem("tm-chart-style", style);
+  }
 
   if (isLoading || !mounted) {
     return <ChartSkeleton />;
@@ -138,100 +153,200 @@ export function TimeSeriesChart({
       : {}),
   }));
 
+  const tooltipConfig = hasPrevious
+    ? { content: <ComparisonTooltip /> }
+    : {
+        contentStyle: {
+          backgroundColor: "var(--tooltip-bg, #fff)",
+          border: "1px solid var(--tooltip-border, #e5e7eb)",
+          borderRadius: "0.75rem",
+          fontSize: "0.8125rem",
+          boxShadow: "0 4px 12px -1px rgb(0 0 0 / 0.1)",
+          padding: "8px 12px",
+        },
+        labelFormatter: formatDate,
+      };
+
+  const xAxisProps = {
+    dataKey: "date" as const,
+    tickFormatter: formatDate,
+    tick: { fontSize: 12, fill: "#94a3b8" },
+    axisLine: false,
+    tickLine: false,
+  };
+
+  const yAxisProps = {
+    tick: { fontSize: 12, fill: "#94a3b8" },
+    axisLine: false,
+    tickLine: false,
+    width: 40,
+  };
+
+  const gridProps = {
+    strokeDasharray: "3 3",
+    stroke: "#e5e7eb",
+    vertical: false,
+  };
+
   return (
     <Card className="animate-fade-in p-6">
-      <ResponsiveContainer width="100%" height={300}>
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id="visitorsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="pageviewsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="#e5e7eb"
-            vertical={false}
-          />
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 12, fill: "#94a3b8" }}
-            axisLine={false}
-            tickLine={false}
-            width={40}
-          />
-          <Tooltip
-            content={hasPrevious ? <ComparisonTooltip /> : undefined}
-            contentStyle={
-              hasPrevious
-                ? undefined
-                : {
-                    backgroundColor: "var(--tooltip-bg, #fff)",
-                    border: "1px solid var(--tooltip-border, #e5e7eb)",
-                    borderRadius: "0.75rem",
-                    fontSize: "0.8125rem",
-                    boxShadow: "0 4px 12px -1px rgb(0 0 0 / 0.1)",
-                    padding: "8px 12px",
-                  }
-            }
-            labelFormatter={hasPrevious ? undefined : formatDate}
-          />
-          <Area
-            type="monotone"
-            dataKey="visitors"
-            stroke="#3b82f6"
-            fill="url(#visitorsGradient)"
-            strokeWidth={2}
-            name="Visitors"
-            animationDuration={600}
-          />
-          <Area
-            type="monotone"
-            dataKey="pageviews"
-            stroke="#8b5cf6"
-            fill="url(#pageviewsGradient)"
-            strokeWidth={2}
-            name="Pageviews"
-            animationDuration={600}
-          />
-          {hasPrevious && (
+      {/* Chart style toggle */}
+      <div className="mb-4 flex items-center justify-end">
+        <div className="inline-flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800/60">
+          <button
+            type="button"
+            onClick={() => switchStyle("area")}
+            className={`rounded-md px-2 py-1.5 transition-all ${
+              chartStyle === "area"
+                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+            title="Area chart"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2 17l4-5 4 3 4-6 4 3 4-4M2 17V7m0 10h20"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => switchStyle("bar")}
+            className={`rounded-md px-2 py-1.5 transition-all ${
+              chartStyle === "bar"
+                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+            title="Bar chart"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 21V13h4v8H3zm7 0V8h4v13h-4zm7 0V3h4v18h-4z"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {chartStyle === "area" ? (
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="visitorsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient
+                id="pageviewsGradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.2} />
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps} />
+            <XAxis {...xAxisProps} />
+            <YAxis {...yAxisProps} />
+            <Tooltip {...tooltipConfig} />
             <Area
               type="monotone"
-              dataKey="prevVisitors"
+              dataKey="visitors"
               stroke="#3b82f6"
-              fill="none"
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
-              strokeOpacity={0.45}
-              name="Prev. Visitors"
+              fill="url(#visitorsGradient)"
+              strokeWidth={2}
+              name="Visitors"
               animationDuration={600}
             />
-          )}
-          {hasPrevious && (
             <Area
               type="monotone"
-              dataKey="prevPageviews"
+              dataKey="pageviews"
               stroke="#8b5cf6"
-              fill="none"
-              strokeWidth={1.5}
-              strokeDasharray="4 3"
-              strokeOpacity={0.45}
-              name="Prev. Pageviews"
+              fill="url(#pageviewsGradient)"
+              strokeWidth={2}
+              name="Pageviews"
               animationDuration={600}
             />
-          )}
-        </AreaChart>
-      </ResponsiveContainer>
+            {hasPrevious && (
+              <Area
+                type="monotone"
+                dataKey="prevVisitors"
+                stroke="#3b82f6"
+                fill="none"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                strokeOpacity={0.45}
+                name="Prev. Visitors"
+                animationDuration={600}
+              />
+            )}
+            {hasPrevious && (
+              <Area
+                type="monotone"
+                dataKey="prevPageviews"
+                stroke="#8b5cf6"
+                fill="none"
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                strokeOpacity={0.45}
+                name="Prev. Pageviews"
+                animationDuration={600}
+              />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={chartData} barGap={2}>
+            <defs>
+              <linearGradient id="visitorsBarGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.9} />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.7} />
+              </linearGradient>
+              <linearGradient id="pageviewsBarGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.9} />
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.7} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid {...gridProps} />
+            <XAxis {...xAxisProps} />
+            <YAxis {...yAxisProps} />
+            <Tooltip {...tooltipConfig} />
+            <Bar
+              dataKey="visitors"
+              fill="url(#visitorsBarGrad)"
+              radius={[4, 4, 0, 0]}
+              name="Visitors"
+              animationDuration={600}
+            />
+            <Bar
+              dataKey="pageviews"
+              fill="url(#pageviewsBarGrad)"
+              radius={[4, 4, 0, 0]}
+              name="Pageviews"
+              animationDuration={600}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </Card>
   );
 }
