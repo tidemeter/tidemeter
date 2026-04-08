@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.7...tidemeter-v0.1.8) (2026-04-08)
+
+
+### Bug Fixes
+
+* login form for demo, improve graph ([0753ec1](https://github.com/tidemeter/tidemeter/commit/0753ec13ed41cff762943060e5491acb1adb5d31))
+
 ## [0.1.7](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.6...tidemeter-v0.1.7) (2026-04-08)
 
 
