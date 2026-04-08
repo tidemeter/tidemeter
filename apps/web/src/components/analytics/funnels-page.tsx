@@ -115,7 +115,7 @@ function FunnelChart({ data }: { data: FunnelResult }) {
         );
       })}
 
-      <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="mt-4 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/50">
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Overall Conversion
         </span>
@@ -266,7 +266,7 @@ function FunnelDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Signup Flow"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
 
@@ -277,7 +277,7 @@ function FunnelDialog({
             {steps.map((step, i) => (
               <div
                 key={i}
-                className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
+                className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900/50"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase text-gray-400">
@@ -299,7 +299,7 @@ function FunnelDialog({
                     placeholder="Step name"
                     value={step.name}
                     onChange={(e) => updateStep(i, { name: e.target.value })}
-                    className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    className="rounded border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   />
                   <select
                     value={step.matchType}
@@ -308,7 +308,7 @@ function FunnelDialog({
                         matchType: e.target.value as FunnelStep["matchType"],
                       })
                     }
-                    className="cursor-pointer rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    className="cursor-pointer rounded border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   >
                     <option value="url_path">Page URL</option>
                     <option value="event_name">Custom Event</option>
@@ -321,7 +321,7 @@ function FunnelDialog({
                           .value as FunnelStep["matchOperator"],
                       })
                     }
-                    className="cursor-pointer rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    className="cursor-pointer rounded border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   >
                     <option value="equals">Equals</option>
                     <option value="contains">Contains</option>
@@ -338,7 +338,7 @@ function FunnelDialog({
                     onChange={(e) =>
                       updateStep(i, { matchValue: e.target.value })
                     }
-                    className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    className="rounded border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   />
                 </div>
               </div>
@@ -347,7 +347,7 @@ function FunnelDialog({
               <button
                 type="button"
                 onClick={addStep}
-                className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 dark:border-gray-600 dark:text-gray-400"
+                className="flex w-full cursor-pointer items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 py-2 text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600 dark:border-gray-700 dark:text-gray-400"
               >
                 <svg
                   className="h-4 w-4"
@@ -507,7 +507,7 @@ export function FunnelsPage({
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Link
               href={`/${websiteId}`}
-              className="hover:text-blue-600 dark:hover:text-blue-400"
+              className="hover:text-primary-600 dark:hover:text-primary-400"
             >
               {websiteName}
             </Link>
@@ -539,8 +539,8 @@ export function FunnelsPage({
                 className={cn(
                   "cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium transition-all",
                   f.id === selectedFunnelId
-                    ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-300"
-                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:bg-gray-700",
+                    ? "border-primary-500 bg-primary-50 text-primary-700 shadow-sm dark:border-primary-400 dark:bg-primary-500/10 dark:text-primary-300"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:bg-gray-700",
                 )}
               >
                 {f.name}
@@ -586,7 +586,7 @@ export function FunnelsPage({
                     <button
                       type="button"
                       onClick={() => setShowEdit(true)}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-blue-400"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-primary-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-primary-400"
                       title="Edit funnel"
                     >
                       <svg
@@ -640,7 +640,7 @@ export function FunnelsPage({
         <CardContent className="p-6">
           {!funnelsLoaded ? (
             <div className="flex items-center justify-center py-16">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500" />
             </div>
           ) : funnels.length === 0 && !showCreate ? (
             <div className="flex flex-col items-center justify-center py-16">
@@ -674,7 +674,7 @@ export function FunnelsPage({
             </div>
           ) : loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500" />
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500" />
             </div>
           ) : funnelResult ? (
             <FunnelChart data={funnelResult} />

@@ -207,7 +207,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
             </div>
             <div>
@@ -222,7 +222,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
                 type="text"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 placeholder="example.com"
               />
             </div>
@@ -279,7 +279,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
                 <input
                   readOnly
                   value={`${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareId}`}
-                  className="block w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
                 <Button
                   variant="secondary"

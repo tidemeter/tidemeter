@@ -53,7 +53,7 @@ function VisitorRow({
       href={`/${websiteId}/visitors/${visitor.visitorId}`}
       className="group block"
     >
-      <div className="flex items-center gap-4 rounded-xl border border-gray-200/80 bg-white px-5 py-4 transition-all duration-150 hover:border-blue-200 hover:shadow-md dark:border-gray-800 dark:bg-gray-950 dark:hover:border-blue-800">
+      <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 transition-all duration-150 hover:border-primary-200 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/50 dark:hover:border-primary-800">
         {/* Avatar */}
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-500">
           <span className="text-sm font-bold text-white">
@@ -64,7 +64,7 @@ function VisitorRow({
         {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+            <span className="truncate text-sm font-semibold text-gray-900 group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
               {displayId}
             </span>
             {visitor.userId && <Badge variant="success">Identified</Badge>}
@@ -194,7 +194,7 @@ export function VisitorList({
           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
             <Link
               href={`/${websiteId}`}
-              className="hover:text-blue-600 dark:hover:text-blue-400"
+              className="hover:text-primary-600 dark:hover:text-primary-400"
             >
               {websiteName}
             </Link>
@@ -220,7 +220,7 @@ export function VisitorList({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by visitor ID or user ID..."
-          className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+          className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
         />
         <Button type="submit" variant="secondary" size="sm">
           Search

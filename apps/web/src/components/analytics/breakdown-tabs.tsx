@@ -126,16 +126,16 @@ export function BreakdownTabs({ breakdowns, onFilterAdd }: BreakdownTabsProps) {
   return (
     <div className="space-y-4">
       {/* Tab navigation */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800/50">
+      <div className="flex gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900/50">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
               activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+                ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white"
                 : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200",
             )}
           >

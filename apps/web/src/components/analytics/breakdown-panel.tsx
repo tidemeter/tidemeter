@@ -75,14 +75,14 @@ export function BreakdownPanel({
                 }
               >
                 <div
-                  className="absolute inset-y-0 left-0 rounded-lg bg-blue-50/80 transition-all duration-300 dark:bg-blue-900/15"
+                  className="absolute inset-y-0 left-0 rounded-lg bg-primary-50/80 transition-all duration-300 dark:bg-primary-500/8"
                   style={{
                     width: `${Math.max(item.percentage * 100, 2).toFixed(0)}%`,
                   }}
                 />
                 <div className="relative flex items-center justify-between px-3 py-2">
                   <span
-                    className={`truncate text-[13px] font-medium text-gray-700 dark:text-gray-200 ${onItemClick ? "group-hover:text-blue-600 dark:group-hover:text-blue-400" : ""}`}
+                    className={`truncate text-[13px] font-medium text-gray-700 dark:text-gray-200 ${onItemClick ? "group-hover:text-primary-600 dark:group-hover:text-primary-400" : ""}`}
                   >
                     {item.value || "(direct / none)"}
                   </span>

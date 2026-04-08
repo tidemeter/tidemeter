@@ -1,6 +1,6 @@
 # AGENTS.md — TideMeter
 
-> Self-hosted, privacy-focused web analytics platform.
+> Self-hosted, privacy-focused web analytics for developers and small teams.
 
 ## Project Overview
 

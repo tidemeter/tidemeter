@@ -21,7 +21,7 @@ export default function AuthLayout({
         <ThemeScript />
       </head>
       <body
-        className={`${inter.className} min-h-screen bg-slate-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100`}
+        className={`${inter.className} min-h-screen bg-slate-50 text-gray-900 antialiased dark:bg-[#0b0b11] dark:text-gray-100`}
       >
         {children}
       </body>

@@ -2,7 +2,7 @@
 
 # TideMeter
 
-**Self-hosted, privacy-focused web analytics**
+**Self-hosted, privacy-focused web analytics for developers and small teams**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Built with Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)

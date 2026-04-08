@@ -66,7 +66,7 @@ function SimpleBreakdown({
                 className="group relative flex items-center justify-between rounded-md px-3 py-2"
               >
                 <div
-                  className="absolute inset-0 rounded-md bg-blue-50 dark:bg-blue-900/20"
+                  className="absolute inset-0 rounded-md bg-primary-50 dark:bg-primary-500/10"
                   style={{ width: `${Math.max(item.percentage * 100, 2)}%` }}
                 />
                 <span className="relative z-10 truncate text-sm text-gray-700 dark:text-gray-300">
@@ -159,7 +159,7 @@ export function SharedDashboard({
       {/* Footer */}
       <p className="mt-8 text-center text-xs text-gray-400 dark:text-gray-500">
         Powered by <span className="font-medium">TideMeter</span> —
-        Privacy-focused web analytics
+        Privacy-focused web analytics for developers
       </p>
     </div>
   );

@@ -24,5 +24,7 @@ export default async function HomePage() {
     isActive: (doc.isActive as boolean) ?? true,
   }));
 
-  return <WebsiteList websites={websites} />;
+  const isDemoMode = process.env.DEMO_MODE === "true";
+
+  return <WebsiteList websites={websites} isDemoMode={isDemoMode} />;
 }

@@ -57,31 +57,24 @@ function ComparisonTooltip({ active, payload, label }: any) {
   if (!data) return null;
 
   return (
-    <div
-      style={{
-        backgroundColor: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: "0.75rem",
-        fontSize: "0.8125rem",
-        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-        padding: "8px 12px",
-      }}
-    >
-      <p style={{ fontWeight: 600, marginBottom: 4 }}>{formatDate(label)}</p>
-      <p style={{ color: "#3b82f6" }}>
+    <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] shadow-lg dark:border-gray-700 dark:bg-gray-900">
+      <p className="mb-1 font-semibold text-gray-900 dark:text-white">
+        {formatDate(label)}
+      </p>
+      <p className="text-primary-500">
         Visitors: {data.visitors}
         {data.prevVisitors != null && (
-          <span style={{ opacity: 0.5 }}> vs {data.prevVisitors}</span>
+          <span className="opacity-50"> vs {data.prevVisitors}</span>
         )}
       </p>
-      <p style={{ color: "#8b5cf6" }}>
+      <p className="text-violet-500">
         Pageviews: {data.pageviews}
         {data.prevPageviews != null && (
-          <span style={{ opacity: 0.5 }}> vs {data.prevPageviews}</span>
+          <span className="opacity-50"> vs {data.prevPageviews}</span>
         )}
       </p>
       {data.prevDate && (
-        <p style={{ color: "#94a3b8", fontSize: "0.75rem", marginTop: 4 }}>
+        <p className="mt-1 text-xs text-gray-400">
           Previous: {formatDate(data.prevDate)}
         </p>
       )}
@@ -151,11 +144,11 @@ export function TimeSeriesChart({
         <AreaChart data={chartData}>
           <defs>
             <linearGradient id="visitorsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
               <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="pageviewsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.15} />
+              <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.2} />
               <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
             </linearGradient>
           </defs>
@@ -183,11 +176,11 @@ export function TimeSeriesChart({
               hasPrevious
                 ? undefined
                 : {
-                    backgroundColor: "#fff",
-                    border: "1px solid #e2e8f0",
+                    backgroundColor: "var(--tooltip-bg, #fff)",
+                    border: "1px solid var(--tooltip-border, #e5e7eb)",
                     borderRadius: "0.75rem",
                     fontSize: "0.8125rem",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05)",
+                    boxShadow: "0 4px 12px -1px rgb(0 0 0 / 0.1)",
                     padding: "8px 12px",
                   }
             }

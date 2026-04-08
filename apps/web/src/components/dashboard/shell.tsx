@@ -13,6 +13,12 @@ export interface AuthUser {
   avatarUrl?: string;
 }
 
+export interface ShellWebsite {
+  id: string;
+  name: string;
+  domain: string;
+}
+
 function DashboardIcon() {
   return (
     <svg
@@ -198,6 +204,42 @@ function RetentionIcon() {
   );
 }
 
+function ChevronDownIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+      />
+    </svg>
+  );
+}
+
+function GlobeIcon() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"
+      />
+    </svg>
+  );
+}
+
 function getInitials(user: { displayName?: string; email: string }): string {
   if (user.displayName) {
     return user.displayName
@@ -213,30 +255,40 @@ function getInitials(user: { displayName?: string; email: string }): string {
 export function DashboardShell({
   children,
   user,
+  isDemoMode = false,
+  websites = [],
 }: {
   children: React.ReactNode;
   user: AuthUser | null;
+  isDemoMode?: boolean;
+  websites?: ShellWebsite[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sitePickerOpen, setSitePickerOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const sitePickerRef = useRef<HTMLDivElement>(null);
 
   const isHome = pathname === "/" || pathname === "/dashboard";
   const isSettings = pathname === "/settings";
+  const isStatus = pathname === "/status";
 
   // Extract websiteId from path if we're in a website context
   const pathParts = pathname.split("/").filter(Boolean);
   const websiteId =
     pathParts.length >= 1 &&
     pathParts[0] !== "settings" &&
-    pathParts[0] !== "dashboard"
+    pathParts[0] !== "dashboard" &&
+    pathParts[0] !== "status"
       ? pathParts[0]
       : null;
   const isVisitors = websiteId ? pathname.includes("/visitors") : false;
   const isFunnels = websiteId ? pathname.includes("/funnels") : false;
   const isRetention = websiteId ? pathname.includes("/retention") : false;
+
+  const currentSite = websites.find((w) => w.id === websiteId);
 
   const logout = useCallback(async () => {
     await fetch("/api/users/logout", {
@@ -251,6 +303,12 @@ export function DashboardShell({
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
+      if (
+        sitePickerRef.current &&
+        !sitePickerRef.current.contains(e.target as Node)
+      ) {
+        setSitePickerOpen(false);
+      }
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -260,7 +318,7 @@ export function DashboardShell({
   const initials = user ? getInitials(user) : "U";
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-gray-900">
+    <div className="flex h-screen bg-slate-50 dark:bg-[#0b0b11]">
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -276,7 +334,7 @@ export function DashboardShell({
               GitHub
             </SidebarItem>
 
-            <SidebarItem href="/api/health">
+            <SidebarItem href="/status" active={isStatus}>
               <ServerIcon />
               System Status
             </SidebarItem>
@@ -294,25 +352,89 @@ export function DashboardShell({
             Dashboard
           </SidebarItem>
 
-          {websiteId && (
-            <SidebarItem href={`/${websiteId}/visitors`} active={isVisitors}>
-              <UsersIcon />
-              User Journeys
-            </SidebarItem>
+          {/* Site selector — shown when there are websites */}
+          {websites.length > 0 && (
+            <div className="relative px-1 py-2" ref={sitePickerRef}>
+              <button
+                type="button"
+                onClick={() => setSitePickerOpen((prev) => !prev)}
+                className="flex w-full items-center gap-2 rounded-lg border border-gray-200/80 bg-gray-100 px-3 py-2 text-left text-[13px] transition-all hover:bg-gray-200/70 dark:border-gray-700/60 dark:bg-gray-900/80 dark:hover:border-gray-600/60 dark:hover:bg-gray-800/80"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary-600/10 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400">
+                  <GlobeIcon />
+                </span>
+                <span className="flex-1 truncate font-medium text-gray-800 dark:text-gray-200">
+                  {currentSite ? currentSite.name : "Select a site"}
+                </span>
+                <ChevronDownIcon />
+              </button>
+              {sitePickerOpen && (
+                <div className="absolute left-1 right-1 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700/60 dark:bg-gray-950">
+                  {websites.map((site) => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => {
+                        setSitePickerOpen(false);
+                        router.push(`/${site.id}`);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                        site.id === websiteId
+                          ? "bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-400"
+                          : "text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      <GlobeIcon />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{site.name}</p>
+                        <p className="truncate text-[11px] text-gray-400 dark:text-gray-500">
+                          {site.domain}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
-          {websiteId && (
-            <SidebarItem href={`/${websiteId}/funnels`} active={isFunnels}>
-              <FunnelIcon />
-              Funnels
-            </SidebarItem>
-          )}
-
-          {websiteId && (
-            <SidebarItem href={`/${websiteId}/retention`} active={isRetention}>
-              <RetentionIcon />
-              Retention
-            </SidebarItem>
+          {/* Analytics nav — dimmed when no site is selected */}
+          {websiteId ? (
+            <>
+              <SidebarItem href={`/${websiteId}/funnels`} active={isFunnels}>
+                <FunnelIcon />
+                Funnels
+              </SidebarItem>
+              <SidebarItem href={`/${websiteId}/visitors`} active={isVisitors}>
+                <UsersIcon />
+                User Journeys
+              </SidebarItem>
+              <SidebarItem
+                href={`/${websiteId}/retention`}
+                active={isRetention}
+              >
+                <RetentionIcon />
+                Retention
+              </SidebarItem>
+            </>
+          ) : (
+            <div
+              className="space-y-0.5 opacity-40 pointer-events-none select-none"
+              aria-hidden
+            >
+              <SidebarItem href="#">
+                <FunnelIcon />
+                Funnels
+              </SidebarItem>
+              <SidebarItem href="#">
+                <UsersIcon />
+                User Journeys
+              </SidebarItem>
+              <SidebarItem href="#">
+                <RetentionIcon />
+                Retention
+              </SidebarItem>
+            </div>
           )}
 
           <SidebarItem href="/settings" active={isSettings}>
@@ -324,7 +446,7 @@ export function DashboardShell({
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200/80 bg-white px-4 sm:px-6 dark:border-gray-800 dark:bg-gray-950">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white/80 px-4 backdrop-blur-sm sm:px-6 dark:border-gray-800 dark:bg-gray-950/60 dark:backdrop-blur-sm">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -342,7 +464,7 @@ export function DashboardShell({
               onClick={() => setMenuOpen((prev) => !prev)}
               className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-600">
                 <span className="text-xs font-semibold text-white">
                   {initials}
                 </span>
@@ -353,7 +475,7 @@ export function DashboardShell({
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-gray-200/80 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+              <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                 {user && (
                   <div className="border-b border-gray-100 px-4 py-2.5 dark:border-gray-700">
                     <p className="truncate text-sm font-medium text-gray-900 dark:text-white">

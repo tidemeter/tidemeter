@@ -30,14 +30,14 @@ interface RetentionPageProps {
 // ── Retention Grid ───────────────────────────────────────────────────
 
 function getRetentionColor(percentage: number): string {
-  if (percentage >= 80) return "bg-blue-600 text-white";
-  if (percentage >= 60) return "bg-blue-500 text-white";
-  if (percentage >= 40) return "bg-blue-400 text-white";
-  if (percentage >= 25) return "bg-blue-300 text-gray-900";
-  if (percentage >= 15) return "bg-blue-200 text-gray-900";
-  if (percentage >= 5) return "bg-blue-100 text-gray-700";
-  if (percentage > 0) return "bg-blue-50 text-gray-600";
-  return "bg-gray-50 text-gray-400 dark:bg-gray-800/50 dark:text-gray-600";
+  if (percentage >= 80) return "bg-primary-600 text-white";
+  if (percentage >= 60) return "bg-primary-500 text-white";
+  if (percentage >= 40) return "bg-primary-400 text-white";
+  if (percentage >= 25) return "bg-primary-300 text-gray-900";
+  if (percentage >= 15) return "bg-primary-200 text-gray-900";
+  if (percentage >= 5) return "bg-primary-100 text-gray-700";
+  if (percentage > 0) return "bg-primary-50 text-gray-600";
+  return "bg-gray-50 text-gray-400 dark:bg-gray-900/50 dark:text-gray-600";
 }
 
 function formatCohortDate(
@@ -241,7 +241,7 @@ function GranularityPicker({
   ];
 
   return (
-    <div className="inline-flex rounded-lg border border-gray-200/80 bg-white dark:border-gray-700 dark:bg-gray-800">
+    <div className="inline-flex rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/50">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -250,7 +250,7 @@ function GranularityPicker({
           className={cn(
             "cursor-pointer px-3 py-1.5 text-xs font-medium transition-colors first:rounded-l-lg last:rounded-r-lg",
             value === opt.value
-              ? "bg-blue-600 text-white"
+              ? "bg-primary-600 text-white"
               : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700",
           )}
         >
@@ -270,11 +270,11 @@ function RetentionSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="h-16 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
+            className="h-16 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-900/50"
           />
         ))}
       </div>
-      <div className="h-96 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+      <div className="h-96 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-900/50" />
     </div>
   );
 }
@@ -399,7 +399,7 @@ export function RetentionPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <svg
-                  className="h-5 w-5 text-blue-500"
+                  className="h-5 w-5 text-primary-500"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

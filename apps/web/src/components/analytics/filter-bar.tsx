@@ -47,16 +47,16 @@ function FilterPill({
 }) {
   const option = FILTER_OPTIONS.find((o) => o.property === filter.property);
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+    <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:bg-primary-500/10 dark:text-primary-300">
       <span className="font-semibold">{option?.label ?? filter.property}</span>
-      <span className="text-blue-500 dark:text-blue-400">
+      <span className="text-primary-500 dark:text-primary-400">
         {OPERATOR_LABELS[filter.operator]}
       </span>
       <span>{filter.value}</span>
       <button
         type="button"
         onClick={onRemove}
-        className="ml-1 cursor-pointer rounded-full p-0.5 hover:bg-blue-100 dark:hover:bg-blue-800"
+        className="ml-1 cursor-pointer rounded-full p-0.5 hover:bg-primary-100 dark:hover:bg-primary-800/30"
         aria-label="Remove filter"
       >
         <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor">
@@ -121,7 +121,7 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 dark:border-gray-600 dark:text-gray-400 dark:hover:border-gray-500 dark:hover:text-gray-300"
+            className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 dark:border-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300"
           >
             <svg
               className="h-3 w-3"
@@ -152,7 +152,7 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
       </div>
 
       {isAdding && (
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900/50">
           <div className="min-w-[140px]">
             <label className="mb-1 block text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
               Property
@@ -160,7 +160,7 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
             <select
               value={selectedProperty}
               onChange={(e) => setSelectedProperty(e.target.value)}
-              className="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+              className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             >
               <option value="">Select...</option>
               {Object.entries(groups).map(([group, options]) => (
@@ -184,7 +184,7 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
               onChange={(e) =>
                 setSelectedOperator(e.target.value as StatsFilter["operator"])
               }
-              className="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+              className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             >
               <option value="eq">is</option>
               <option value="neq">is not</option>
@@ -202,7 +202,7 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
               onChange={(e) => setFilterValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               placeholder="Enter value..."
-              className="w-full rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 placeholder:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
+              className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-700 placeholder:text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
 
@@ -214,8 +214,8 @@ export function FilterBar({ filters, onFiltersChange }: FilterBarProps) {
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium",
                 selectedProperty && filterValue.trim()
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500",
+                  ? "bg-primary-600 text-white hover:bg-primary-700"
+                  : "cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-gray-800 dark:text-gray-500",
               )}
             >
               Apply

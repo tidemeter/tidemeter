@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Button } from "@tidemeter/ui";
@@ -15,9 +15,16 @@ interface Website {
 
 interface WebsiteListProps {
   websites: Website[];
+  isDemoMode?: boolean;
 }
 
-function EmptyState({ onAdd }: { onAdd: () => void }) {
+function EmptyState({
+  onAdd,
+  isDemoMode,
+}: {
+  onAdd: () => void;
+  isDemoMode?: boolean;
+}) {
   return (
     <Card className="flex flex-col items-center justify-center py-20">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-gray-800">
@@ -39,57 +46,12 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
         No websites yet
       </h3>
       <p className="mt-1.5 max-w-xs text-center text-sm text-gray-500 dark:text-gray-400">
-        Add your first website to start tracking analytics. It only takes a
-        minute.
+        {isDemoMode
+          ? "This is a demo instance. Adding new websites is not available in demo mode."
+          : "Add your first website to start tracking analytics. It only takes a minute."}
       </p>
-      <Button className="mt-5" onClick={onAdd}>
-        <svg
-          className="mr-2 h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4.5v15m7.5-7.5h-15"
-          />
-        </svg>
-        Add your first website
-      </Button>
-    </Card>
-  );
-}
-
-export function WebsiteList({ websites }: WebsiteListProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const router = useRouter();
-
-  // Auto-redirect to analytics when user has exactly one website
-  useEffect(() => {
-    if (websites.length === 1) {
-      router.replace(`/${websites[0].id}`);
-    }
-  }, [websites, router]);
-
-  // Show nothing while redirecting
-  if (websites.length === 1) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-            Websites
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Select a website to view analytics
-          </p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)}>
+      {!isDemoMode && (
+        <Button className="mt-5" onClick={onAdd}>
           <svg
             className="mr-2 h-4 w-4"
             fill="none"
@@ -103,19 +65,64 @@ export function WebsiteList({ websites }: WebsiteListProps) {
               d="M12 4.5v15m7.5-7.5h-15"
             />
           </svg>
-          Add Website
+          Add your first website
         </Button>
+      )}
+    </Card>
+  );
+}
+
+export function WebsiteList({
+  websites,
+  isDemoMode = false,
+}: WebsiteListProps) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const router = useRouter();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+            Websites
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Select a website to view analytics
+          </p>
+        </div>
+        {isDemoMode ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
+            Demo mode — adding sites is disabled
+          </div>
+        ) : (
+          <Button onClick={() => setDialogOpen(true)}>
+            <svg
+              className="mr-2 h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4.5v15m7.5-7.5h-15"
+              />
+            </svg>
+            Add Website
+          </Button>
+        )}
       </div>
 
       {websites.length === 0 ? (
-        <EmptyState onAdd={() => setDialogOpen(true)} />
+        <EmptyState onAdd={() => setDialogOpen(true)} isDemoMode={isDemoMode} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {websites.map((site) => (
             <Link key={site.id} href={`/${site.id}`}>
               <Card className="group cursor-pointer p-6 transition-all duration-200 hover:shadow-md">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 dark:text-white dark:group-hover:text-blue-400">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
                     {site.name}
                   </h3>
                   <Badge variant={site.isActive ? "success" : "default"}>

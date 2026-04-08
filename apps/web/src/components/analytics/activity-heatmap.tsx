@@ -17,12 +17,12 @@ const HOUR_LABELS = Array.from({ length: 24 }, (_, i) =>
 function getIntensityClass(value: number, maxValue: number): string {
   if (value === 0) return "bg-gray-100 dark:bg-gray-800";
   const ratio = value / maxValue;
-  if (ratio < 0.15) return "bg-blue-100 dark:bg-blue-900/30";
-  if (ratio < 0.3) return "bg-blue-200 dark:bg-blue-800/40";
-  if (ratio < 0.5) return "bg-blue-300 dark:bg-blue-700/50";
-  if (ratio < 0.7) return "bg-blue-400 dark:bg-blue-600/60";
+  if (ratio < 0.15) return "bg-primary-100 dark:bg-primary-500/10";
+  if (ratio < 0.3) return "bg-primary-200 dark:bg-primary-800/40";
+  if (ratio < 0.5) return "bg-primary-300 dark:bg-primary-700/50";
+  if (ratio < 0.7) return "bg-primary-400 dark:bg-primary-600/60";
   if (ratio < 0.85) return "bg-blue-500 dark:bg-blue-500/70";
-  return "bg-blue-600 dark:bg-blue-400/80";
+  return "bg-primary-600 dark:bg-primary-400/80";
 }
 
 export function ActivityHeatmap({ data }: ActivityHeatmapProps) {

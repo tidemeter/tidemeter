@@ -27,7 +27,7 @@ function StepRow({ step, isLast }: { step: JourneyStep; isLast: boolean }) {
         className={cn(
           "relative z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
           isPageview
-            ? "bg-blue-100 dark:bg-blue-900/30"
+            ? "bg-primary-100 dark:bg-primary-500/10"
             : "bg-violet-100 dark:bg-violet-900/30",
         )}
       >
@@ -96,7 +96,7 @@ function SessionCard({
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
             session.isBounce
               ? "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
-              : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
+              : "bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-400",
           )}
         >
           {session.steps.length}
