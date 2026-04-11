@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.8...tidemeter-v0.1.9) (2026-04-11)
+
+
+### Bug Fixes
+
+* improve demo mode ([80ddd66](https://github.com/tidemeter/tidemeter/commit/80ddd66dd6726dd5a569bab2c95a0ffa4fece210))
+
 ## [0.1.8](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.7...tidemeter-v0.1.8) (2026-04-08)
 
 
