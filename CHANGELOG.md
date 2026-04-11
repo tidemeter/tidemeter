@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.9...tidemeter-v0.1.10) (2026-04-11)
+
+
+### Bug Fixes
+
+* update README.md ([a4a2608](https://github.com/tidemeter/tidemeter/commit/a4a260814897518b3e0f23af49cbf60d854efc29))
+
 ## [0.1.9](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.8...tidemeter-v0.1.9) (2026-04-11)
 
 
