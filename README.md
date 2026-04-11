@@ -7,6 +7,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Built with Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![PayloadCMS](https://img.shields.io/badge/PayloadCMS-3-blue)](https://payloadcms.com)
+[![Docker Hub](https://img.shields.io/docker/pulls/tidemeter/tidemeter)](https://hub.docker.com/r/tidemeter/tidemeter)
+
+[Website](https://tidemeter.com) · [Docs](https://tidemeter.com/docs) · [Live Demo](https://demo.tidemeter.com) · [Docker Hub](https://hub.docker.com/r/tidemeter/tidemeter)
 
 <br />
 
@@ -21,29 +24,62 @@
 - **Privacy-focused** — no cookies, no fingerprinting, GDPR-friendly by design
 - **Lightweight tracker** — ~1.5 KB gzipped, zero dependencies
 - **Real-time dashboard** — interactive charts powered by Recharts
+- **Funnels & journeys** — built-in conversion funnels and visitor path visualization
 - **Multiple database support** — PostgreSQL, ClickHouse, or SQLite for analytics storage
 - **Built on PayloadCMS 3 + Next.js 16** — modern, extensible full-stack architecture
-- **Docker Compose** — one-command self-hosting
+- **Docker image on Docker Hub** — `docker pull tidemeter/tidemeter` and you're running
 - **SPA support** — automatic history API interception for single-page apps
 - **Custom event tracking** — track signups, clicks, purchases, anything
 - **Team collaboration** — multi-user with role-based access
-- **API for programmatic access** — query your analytics data from anywhere
+- **Public dashboards** — share read-only analytics views without requiring login
+- **REST API** — query your analytics data programmatically
 
-## Quick Start (Docker)
+## Quick Start
+
+### Option A: Docker Hub Image (Fastest)
+
+Pull the pre-built image from [Docker Hub](https://hub.docker.com/r/tidemeter/tidemeter) — no cloning, no build step:
 
 ```bash
-git clone https://github.com/your-org/tidemeter.git
+# Start a PostgreSQL database (skip if you already have one)
+docker run -d \
+  --name tidemeter-db \
+  -p 5432:5432 \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=tidemeter \
+  postgres:16-alpine
+
+# Pull and run TideMeter
+docker run -d \
+  -p 3700:3700 \
+  -e DATABASE_URL="postgresql://postgres:postgres@host.docker.internal:5432/tidemeter" \
+  -e PAYLOAD_SECRET="your-secret-key-minimum-32-characters" \
+  -e NEXT_PUBLIC_APP_URL="http://localhost:3700" \
+  tidemeter/tidemeter:latest
+```
+
+Browse all available tags on [Docker Hub → tidemeter/tidemeter](https://hub.docker.com/r/tidemeter/tidemeter).
+
+### Option B: Docker Compose
+
+Clone the repo and bring up everything (app + database) with one command:
+
+```bash
+git clone https://github.com/tidemeter/tidemeter.git
 cd tidemeter
 cp .env.example .env
-# Edit .env with your settings (at minimum, change PAYLOAD_SECRET and SESSION_SALT_SECRET)
+# Edit .env — at minimum, set PAYLOAD_SECRET and SESSION_SALT_SECRET
 docker compose -f docker/docker-compose.yml up -d
 ```
 
 Visit **http://localhost:3700** to create your admin account and add your first website.
 
-> **Documentation**: Full docs available at [tidemeter.com/docs](https://tidemeter.com/docs)
+> **Full documentation**: [tidemeter.com/docs](https://tidemeter.com/docs)
 
 ## Development Setup
+
+For contributors and anyone who wants to build from source.
 
 ### Prerequisites
 
@@ -54,30 +90,20 @@ Visit **http://localhost:3700** to create your admin account and add your first 
 ### Install & Run
 
 ```bash
-# Install dependencies
+git clone https://github.com/tidemeter/tidemeter.git
+cd tidemeter
 pnpm install
 
-# Create your environment file
 cp .env.example .env
-# Edit .env — point DATABASE_URL / ANALYTICS_DATABASE_URL to your PostgreSQL instance
+# Edit .env — point DATABASE_URL to your PostgreSQL instance
 
-# Start all packages in dev mode
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run tests
-pnpm test
-
-# Lint
-pnpm lint
-
-# Run analytics database migrations
-pnpm db:migrate
+pnpm dev        # Start dev server with Turbopack HMR
+pnpm build      # Production build
+pnpm test       # Run tests
+pnpm lint       # Lint
 ```
 
-The dev server starts at **http://localhost:3700** with Turbopack HMR.
+The dev server starts at **http://localhost:3700**.
 
 ## Adding the Tracker
 
@@ -148,7 +174,7 @@ All configuration is done through environment variables. Copy `.env.example` to 
 | `CLICKHOUSE_URL`         | ClickHouse HTTP endpoint                                       | `http://localhost:8123`                                     |
 | `CLICKHOUSE_DATABASE`    | ClickHouse database name                                       | `tidemeter_analytics`                                       |
 | `ANALYTICS_SQLITE_PATH`  | Path to SQLite file (when using SQLite)                        | `./data/analytics.db`                                       |
-| `NEXT_PUBLIC_APP_URL`    | Public URL of the application                                  | `http://localhost:3000`                                     |
+| `NEXT_PUBLIC_APP_URL`    | Public URL of the application                                  | `http://localhost:3700`                                     |
 | `SESSION_SALT_SECRET`    | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
 | `GEOIP_DB_PATH`          | Path to MaxMind GeoLite2-City.mmdb (optional)                  | —                                                           |
 
@@ -163,6 +189,21 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.ch.yml up -
 ```
 
 This starts PostgreSQL (for PayloadCMS) + ClickHouse (for analytics) + the TideMeter app.
+
+## Deployment
+
+TideMeter runs anywhere Docker runs. Minimum requirements: 1 CPU core, 1 GB RAM.
+
+For production, place TideMeter behind a reverse proxy (Nginx, Caddy, Traefik) for HTTPS. See the [Deployment Guide](https://tidemeter.com/docs/deployment) for Nginx/Caddy examples, Railway, Fly.io, and DigitalOcean instructions.
+
+### Production Checklist
+
+- [ ] `NODE_ENV=production`
+- [ ] `PAYLOAD_SECRET` — strong random value (32+ characters)
+- [ ] `SESSION_SALT_SECRET` — strong random value
+- [ ] `NEXT_PUBLIC_APP_URL` — your actual domain
+- [ ] HTTPS via reverse proxy
+- [ ] Database backups scheduled
 
 ## Tech Stack
 
