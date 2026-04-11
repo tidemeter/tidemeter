@@ -43,24 +43,24 @@ export default async function LoginPage() {
         </div>
 
         {isDemoMode && (
-          <div className="mb-5 rounded-xl border border-primary-200 bg-primary-50 px-4 py-4 shadow-sm dark:border-primary-800/40 dark:bg-primary-500/5">
-            <p className="text-center text-sm font-semibold text-primary-800 dark:text-primary-200">
+          <div className="mb-5 rounded-xl border border-primary-200 bg-primary-100 px-4 py-4 shadow-sm dark:border-primary-800/50 dark:bg-primary-900/20">
+            <p className="text-center text-md font-semibold text-primary-800 dark:text-primary-200">
               Demo mode credentials
             </p>
             <div className="mt-3 space-y-1.5">
               <div className="flex items-center justify-between gap-3 px-3 py-1.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-primary-600 dark:text-primary-400">
+                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">
                   Email
                 </span>
-                <code className="rounded-md border border-primary-200 bg-white px-2.5 py-1 text-[13px] font-semibold text-primary-900 dark:border-primary-700/40 dark:bg-primary-950/50 dark:text-primary-100">
+                <code className="rounded-md border border-primary-300 bg-primary-200 px-2.5 py-1 text-[14px] font-semibold text-primary-900 dark:border-primary-700/0 dark:bg-primary-900/0 dark:text-primary-300">
                   demo@demo.com
                 </code>
               </div>
               <div className="flex items-center justify-between gap-3 px-3 py-1.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-primary-600 dark:text-primary-400">
+                <span className="text-xs font-medium uppercase tracking-wide text-primary-700 dark:text-primary-300">
                   Password
                 </span>
-                <code className="rounded-md border border-primary-200 bg-white px-2.5 py-1 text-[13px] font-semibold text-primary-900 dark:border-primary-700/40 dark:bg-primary-950/50 dark:text-primary-100">
+                <code className="rounded-md border border-primary-300 bg-primary-200 px-2.5 py-1 text-[14px] font-semibold text-primary-900 dark:border-primary-700/0 dark:bg-primary-900/0 dark:text-primary-300">
                   demodemo
                 </code>
               </div>

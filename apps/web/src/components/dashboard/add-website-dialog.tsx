@@ -13,12 +13,14 @@ interface AddWebsiteDialogProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  isDemoMode?: boolean;
 }
 
 export function AddWebsiteDialog({
   open,
   onClose,
   onSuccess,
+  isDemoMode = false,
 }: AddWebsiteDialogProps) {
   const [name, setName] = useState("");
   const [domain, setDomain] = useState("");
@@ -41,6 +43,12 @@ export function AddWebsiteDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (isDemoMode) {
+      handleClose();
+      return;
+    }
+
     setError("");
 
     if (!name.trim() || !domain.trim()) {
@@ -93,6 +101,11 @@ export function AddWebsiteDialog({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isDemoMode && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300">
+                Demo mode — adding sites is disabled
+              </div>
+            )}
             <div>
               <label
                 htmlFor="new-site-name"
@@ -103,10 +116,11 @@ export function AddWebsiteDialog({
               <input
                 id="new-site-name"
                 type="text"
-                required
+                required={!isDemoMode}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                disabled={isDemoMode}
+                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="My Website"
               />
             </div>
@@ -121,10 +135,11 @@ export function AddWebsiteDialog({
               <input
                 id="new-site-domain"
                 type="text"
-                required
+                required={!isDemoMode}
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                disabled={isDemoMode}
+                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="example.com"
               />
             </div>
@@ -143,7 +158,11 @@ export function AddWebsiteDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating…" : "Create Website"}
+                {isDemoMode
+                  ? "Close"
+                  : submitting
+                    ? "Creating\u2026"
+                    : "Create Website"}
               </Button>
             </div>
           </form>

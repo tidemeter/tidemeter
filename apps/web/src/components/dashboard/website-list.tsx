@@ -46,28 +46,25 @@ function EmptyState({
         No websites yet
       </h3>
       <p className="mt-1.5 max-w-xs text-center text-sm text-gray-500 dark:text-gray-400">
-        {isDemoMode
-          ? "This is a demo instance. Adding new websites is not available in demo mode."
-          : "Add your first website to start tracking analytics. It only takes a minute."}
+        Add your first website to start tracking analytics. It only takes a
+        minute.
       </p>
-      {!isDemoMode && (
-        <Button className="mt-5" onClick={onAdd}>
-          <svg
-            className="mr-2 h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 4.5v15m7.5-7.5h-15"
-            />
-          </svg>
-          Add your first website
-        </Button>
-      )}
+      <Button className="mt-5" onClick={onAdd}>
+        <svg
+          className="mr-2 h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 4.5v15m7.5-7.5h-15"
+          />
+        </svg>
+        Add your first website
+      </Button>
     </Card>
   );
 }
@@ -90,28 +87,22 @@ export function WebsiteList({
             Select a website to view analytics
           </p>
         </div>
-        {isDemoMode ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-800 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300">
-            Demo mode — adding sites is disabled
-          </div>
-        ) : (
-          <Button onClick={() => setDialogOpen(true)}>
-            <svg
-              className="mr-2 h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 4.5v15m7.5-7.5h-15"
-              />
-            </svg>
-            Add Website
-          </Button>
-        )}
+        <Button onClick={() => setDialogOpen(true)}>
+          <svg
+            className="mr-2 h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 4.5v15m7.5-7.5h-15"
+            />
+          </svg>
+          Add Website
+        </Button>
       </div>
 
       {websites.length === 0 ? (
@@ -145,6 +136,7 @@ export function WebsiteList({
           setDialogOpen(false);
           router.refresh();
         }}
+        isDemoMode={isDemoMode}
       />
     </div>
   );

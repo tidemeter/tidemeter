@@ -8,6 +8,10 @@
 [![Built with Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![PayloadCMS](https://img.shields.io/badge/PayloadCMS-3-blue)](https://payloadcms.com)
 
+<br />
+
+<img src="tidemeter-dashboard-screenshot.png" alt="TideMeter Dashboard" width="100%" />
+
 </div>
 
 ---
