@@ -1,0 +1,18 @@
+# TideMeter — Demo Mode Override
+#
+# Overlays docker-compose.yml to start TideMeter pre-seeded with a demo
+# user, website, ~1500 analytics events, and example funnels. Useful for
+# evaluation, screenshots, and the public demo at demo.tidemeter.com.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.demo.yml up
+#
+# Login: demo@demo.com / demodemo
+#
+# Seeding runs once on first startup and is idempotent — restarting the
+# container will not duplicate data. Wipe the `pg-data` volume to re-seed.
+
+services:
+  tidemeter:
+    environment:
+      - DEMO_MODE=true

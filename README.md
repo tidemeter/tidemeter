@@ -177,8 +177,49 @@ All configuration is done through environment variables. Copy `.env.example` to 
 | `NEXT_PUBLIC_APP_URL`    | Public URL of the application                                  | `http://localhost:3700`                                     |
 | `SESSION_SALT_SECRET`    | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
 | `GEOIP_DB_PATH`          | Path to MaxMind GeoLite2-City.mmdb (optional)                  | —                                                           |
+| `DEMO_MODE`              | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
 
 See [`.env.example`](.env.example) for the full annotated reference.
+
+## Database Migrations
+
+**Migrations run automatically on first request — there is no manual `migrate` command.**
+
+When the app boots and first initializes PayloadCMS:
+
+1. PayloadCMS connects to PostgreSQL via `DATABASE_URL` and auto-syncs its schema (`push: true`).
+2. The analytics package applies any pending SQL migrations from `packages/analytics/drizzle/` (or ClickHouse migrations from `packages/analytics/clickhouse/` when `ANALYTICS_DB_TYPE=clickhouse`).
+3. If `DEMO_MODE=true`, demo data is seeded (idempotent — see [Demo Mode](#demo-mode)).
+
+This is triggered by **any** request that imports the Payload config — including `/api/health`, which is hit by the Kubernetes readiness probe. So a freshly-rolled pod self-migrates as soon as the probe starts. Just make sure the database user has `CREATE` privileges.
+
+> The first probe after a fresh pod start can take longer than usual (especially with `DEMO_MODE=true`, which generates ~1500 analytics events). The Helm/Kustomize manifests in `cluster/apps/tidemeter/` use a `startupProbe` to give init enough time.
+
+## Demo Mode
+
+Set `DEMO_MODE=true` to boot a fully-populated instance — useful for evaluating TideMeter, recording screenshots, or running a public sandbox. On first startup the container will:
+
+- Create a demo user (`demo@demo.com` / `demodemo`)
+- Create a sample website (`demo.example.com`)
+- Generate ~1500 analytics events spanning the last 90 days
+- Create three example funnels
+
+Seeding is idempotent — it runs only when the demo data is missing, so restarts and upgrades are safe.
+
+```bash
+# Docker run
+docker run -d -p 3700:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e PAYLOAD_SECRET="..." \
+  -e SESSION_SALT_SECRET="..." \
+  -e DEMO_MODE=true \
+  tidemeter/tidemeter:latest
+
+# Docker Compose overlay (PostgreSQL + DEMO_MODE=true)
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.demo.yml up -d
+```
+
+A public instance built with this flag is available at [demo.tidemeter.com](https://demo.tidemeter.com).
 
 ## ClickHouse Mode
 
