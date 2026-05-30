@@ -2,14 +2,26 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { migration } from "clickhouse-migrations";
+import { withAdvisoryLock } from "./advisory-lock.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Distinct lock key from the Postgres analytics migrator so the two
+// domains can run concurrently when both are configured (the Payload DB
+// is always Postgres, so we use it as the coordinator).
+const CLICKHOUSE_MIGRATIONS_LOCK_KEY = "7426384125678901235";
 
 export interface ClickHouseMigrationConfig {
   url: string;
   database: string;
   username: string;
   password: string;
+  /**
+   * Postgres URL used to coordinate concurrent migration runners across
+   * replicas via a session-scoped advisory lock. Optional — when omitted
+   * the migrator runs without a lock (single-replica deploys).
+   */
+  coordinatorDatabaseUrl?: string;
 }
 
 /**
@@ -45,17 +57,32 @@ export async function runClickHouseMigrations(
     return;
   }
 
-  console.log(
-    `[ch-migrate] Running ClickHouse migrations from ${migrationsDir}`,
-  );
+  const run = async () => {
+    console.log(
+      `[ch-migrate] Running ClickHouse migrations from ${migrationsDir}`,
+    );
 
-  await migration(
-    migrationsDir,
-    config.url,
-    config.username,
-    config.password,
-    config.database,
-  );
+    // The clickhouse-migrations library tracks applied migrations in a
+    // `_migrations` table inside the target ClickHouse database and
+    // skips already-applied files, so this call is idempotent.
+    await migration(
+      migrationsDir,
+      config.url,
+      config.username,
+      config.password,
+      config.database,
+    );
 
-  console.log("[ch-migrate] ClickHouse migrations complete.");
+    console.log("[ch-migrate] ClickHouse migrations complete.");
+  };
+
+  if (config.coordinatorDatabaseUrl) {
+    await withAdvisoryLock(
+      config.coordinatorDatabaseUrl,
+      CLICKHOUSE_MIGRATIONS_LOCK_KEY,
+      run,
+    );
+  } else {
+    await run();
+  }
 }

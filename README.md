@@ -183,17 +183,50 @@ See [`.env.example`](.env.example) for the full annotated reference.
 
 ## Database Migrations
 
-**Migrations run automatically on first request — there is no manual `migrate` command.**
+**Migrations run automatically when a new image starts — there is no manual `migrate` command.**
 
 When the app boots and first initializes PayloadCMS:
 
-1. PayloadCMS connects to PostgreSQL via `DATABASE_URL` and auto-syncs its schema (`push: true`).
-2. The analytics package applies any pending SQL migrations from `packages/analytics/drizzle/` (or ClickHouse migrations from `packages/analytics/clickhouse/` when `ANALYTICS_DB_TYPE=clickhouse`).
+1. PayloadCMS schema is applied:
+   - **Development** (`NODE_ENV != "production"`): Drizzle "push" mode auto-diffs collections vs the database and applies DDL on every boot. Fast iteration, no migration files required.
+   - **Production** (`NODE_ENV == "production"`): the versioned migrations in [`apps/web/src/migrations/`](apps/web/src/migrations/) are applied via `payload.db.migrate()`. Each migration is recorded in the `payload_migrations` table and skipped on subsequent boots.
+2. The analytics package applies any pending SQL migrations from `packages/analytics/drizzle/` (or ClickHouse migrations from `packages/analytics/clickhouse/` when `ANALYTICS_DB_TYPE=clickhouse`). A Postgres advisory lock serializes concurrent runners, so rolling deploys with multiple replicas are safe.
 3. If `DEMO_MODE=true`, demo data is seeded (idempotent — see [Demo Mode](#demo-mode)).
 
-This is triggered by **any** request that imports the Payload config — including `/api/health`, which is hit by the Kubernetes readiness probe. So a freshly-rolled pod self-migrates as soon as the probe starts. Just make sure the database user has `CREATE` privileges.
+If **any** of these steps fail, `onInit` re-throws and the pod fails its readiness probe. Kubernetes then halts the rollout and keeps the previous version serving traffic. Logs always end with the failing step.
+
+Init is triggered by any request that imports the Payload config — including `/api/health`, which is hit by the readiness/startup probes. So a freshly-rolled pod self-migrates as soon as the probe starts. The database user just needs `CREATE` privileges.
 
 > The first probe after a fresh pod start can take longer than usual (especially with `DEMO_MODE=true`, which generates ~1500 analytics events). The Helm/Kustomize manifests in `cluster/apps/tidemeter/` use a `startupProbe` to give init enough time.
+
+### Adding a schema change (production)
+
+When you change a Payload collection (add a field, new collection, etc.):
+
+1. In a dev environment with `NODE_ENV=development`, push mode applies the change instantly to your local DB.
+2. Generate a versioned migration for production:
+
+   ```bash
+   cd apps/web && pnpm exec payload migrate:create
+   ```
+
+3. Commit the new file under `apps/web/src/migrations/` plus the regenerated `index.ts`. The next image build picks it up and applies it on boot.
+
+For analytics tables, add a new numbered `.sql` file in `packages/analytics/drizzle/` (e.g. `0002_add_column.sql`) and update the Drizzle schema in `packages/analytics/src/schema/tables.ts`.
+
+### Upgrading an old deployment created in push mode
+
+If your existing database was created by an older TideMeter image (which used Drizzle push in production), the schema is already there but the `payload_migrations` table is empty — the new migration runner would fail trying to recreate existing tables. Two options:
+
+- **One-shot push override**: set `PAYLOAD_DB_PUSH=true` for a single boot, let push reconcile, then unset it. Subsequent boots use migrations.
+- **Baseline manually**: insert a row marking the initial migration as applied:
+
+  ```sql
+  INSERT INTO payload_migrations (name, batch, created_at, updated_at)
+  VALUES ('20260405_190832', 1, NOW(), NOW());
+  ```
+
+  Then restart the pod normally.
 
 ## Demo Mode
 

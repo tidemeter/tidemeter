@@ -169,23 +169,30 @@ There is **no database connection at build time** (CI/CD builds on GitHub). All 
 
 #### 1. PayloadCMS schema (users, teams, websites, API keys, funnels)
 
-PayloadCMS auto-pushes schema changes on startup — it compares its collection definitions against the actual database and applies DDL as needed. **No explicit migration files are required** for most changes (adding/removing fields, collections).
+Mode depends on `NODE_ENV` (override via `PAYLOAD_DB_PUSH=true|false`):
 
-For breaking changes that need a data migration (renaming columns, transforming data):
+- **Development** — Drizzle "push" mode auto-diffs collections vs the database and applies DDL on every boot. No migration files required while iterating.
+- **Production** — push is disabled. `onInit` calls `payload.db.migrate()`, which applies versioned migrations from `apps/web/src/migrations/` and tracks them in the `payload_migrations` table.
 
-1. Run `npx payload migrate:create` inside `apps/web/` to generate a migration file
-2. Commit the migration file — PayloadCMS auto-runs pending migrations on next startup
-3. Migration files go in `apps/web/src/migrations/` (auto-created by PayloadCMS CLI)
+When you change a collection that ships in production, generate a migration:
+
+1. Run `pnpm exec payload migrate:create` inside `apps/web/`
+2. Commit the file under `apps/web/src/migrations/` plus the regenerated `index.ts`
+3. The next image deploy applies it on boot via `payload.db.migrate()`
 
 #### 2. Analytics schema (page_events, sessions, visitor_identities)
 
-Uses a custom SQL migration runner (`packages/analytics/src/migrate.ts`) that auto-runs on every startup via `onInit`. Migration `.sql` files live in `packages/analytics/drizzle/`.
+Custom SQL migration runner (`packages/analytics/src/migrate.ts`) that runs on every startup via `onInit`. Migration `.sql` files live in `packages/analytics/drizzle/`. The runner uses a Postgres advisory lock so multi-replica rollouts serialize safely, and wraps each migration in a transaction.
 
 When changing analytics tables:
 
 1. Update the Drizzle schema in `packages/analytics/src/schema/tables.ts`
 2. Create a new numbered `.sql` file in `packages/analytics/drizzle/` (e.g. `0002_add_column.sql`)
 3. The migration runs automatically on next app startup
+
+#### Failure semantics
+
+If any migration step (Payload, analytics, ClickHouse) or the demo seed throws, `onInit` re-throws. `/api/health` then returns 503, the readiness probe fails, and Kubernetes halts the rollout. **Never swallow migration errors in `onInit`** — the contract relies on failure propagating.
 
 ### Demo data (`DEMO_MODE=true`)
 

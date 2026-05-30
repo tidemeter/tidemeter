@@ -2,8 +2,13 @@ import postgres from "postgres";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { withAdvisoryLock } from "./advisory-lock.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Stable advisory-lock key for analytics Postgres migrations. Every
+// replica uses the same constant so they serialize on the same lock.
+const ANALYTICS_MIGRATIONS_LOCK_KEY = "7426384125678901234";
 
 /**
  * Find the analytics SQL migration directory.
@@ -54,33 +59,44 @@ function getMigrationFiles(dir: string): string[] {
 
 export async function runMigrations(databaseUrl: string): Promise<void> {
   const migrationsDir = findMigrationsDir();
-  const sql = postgres(databaseUrl);
-  try {
-    await ensureMigrationsTable(sql);
 
-    const applied = await getAppliedMigrations(sql);
-    const files = getMigrationFiles(migrationsDir);
+  await withAdvisoryLock(
+    databaseUrl,
+    ANALYTICS_MIGRATIONS_LOCK_KEY,
+    async () => {
+      const sql = postgres(databaseUrl);
+      try {
+        await ensureMigrationsTable(sql);
 
-    if (files.length === 0) {
-      console.warn(
-        `[migrate] No .sql files found (searched: ${migrationsDir})`,
-      );
-    }
+        const applied = await getAppliedMigrations(sql);
+        const files = getMigrationFiles(migrationsDir);
 
-    for (const file of files) {
-      if (applied.has(file)) continue;
+        if (files.length === 0) {
+          console.warn(
+            `[migrate] No .sql files found (searched: ${migrationsDir})`,
+          );
+        }
 
-      const filePath = path.join(migrationsDir, file);
-      const content = fs.readFileSync(filePath, "utf-8");
+        for (const file of files) {
+          if (applied.has(file)) continue;
 
-      console.log(`[migrate] Applying ${file}...`);
-      await sql.unsafe(content);
-      await sql`INSERT INTO analytics._migrations (name) VALUES (${file})`;
-      console.log(`[migrate] Applied ${file}`);
-    }
+          const filePath = path.join(migrationsDir, file);
+          const content = fs.readFileSync(filePath, "utf-8");
 
-    console.log("[migrate] All migrations applied.");
-  } finally {
-    await sql.end();
-  }
+          console.log(`[migrate] Applying ${file}...`);
+          // Wrap each migration + its tracking insert in a single
+          // transaction so a partial failure rolls back cleanly.
+          await sql.begin(async (tx) => {
+            await tx.unsafe(content);
+            await tx`INSERT INTO analytics._migrations (name) VALUES (${file})`;
+          });
+          console.log(`[migrate] Applied ${file}`);
+        }
+
+        console.log("[migrate] All migrations applied.");
+      } finally {
+        await sql.end();
+      }
+    },
+  );
 }
