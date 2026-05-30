@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.11](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.10...tidemeter-v0.1.11) (2026-05-30)
+
+
+### Bug Fixes
+
+* fix helth check for automatic initiating migration on first start ([53d053e](https://github.com/tidemeter/tidemeter/commit/53d053ed9f4a183ae48f8a0843928b22724d35c3))
+* fix migratons when new docker image is used ([98ee618](https://github.com/tidemeter/tidemeter/commit/98ee618fb02fc65cb88a0c2a328c5c56e2cd4ae2))
+
 ## [0.1.10](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.9...tidemeter-v0.1.10) (2026-04-11)
 
 
