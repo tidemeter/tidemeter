@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.13](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.12...tidemeter-v0.1.13) (2026-05-31)
+
+
+### Features
+
+* add linter and fix linter errors ([99ba078](https://github.com/tidemeter/tidemeter/commit/99ba078c1a7cc4e88dcd66a3d7d28e15d7ec1a4d))
+
+
+### Bug Fixes
+
+* fix team member privilege escalation ([b82f9a0](https://github.com/tidemeter/tidemeter/commit/b82f9a061f4cd0a175a5f686943cd58a8e256310))
+* update README.md ([88d8ab0](https://github.com/tidemeter/tidemeter/commit/88d8ab0b523240a2dea6ce53ee14a67c5c5c6381))
+
 ## [0.1.12](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.11...tidemeter-v0.1.12) (2026-05-31)
 
 
