@@ -8,6 +8,72 @@ import { processEvent } from "@/lib/ingestion/processor";
 const websiteCache = new Map<string, { timestamp: number; domain: string }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
+// Token-bucket rate limiter (per IP). Best-effort, in-memory; for multi-replica
+// deployments put a real limiter (e.g. Redis) in front of this endpoint.
+const RATE_LIMIT_PER_MINUTE = Number(
+  process.env.COLLECT_RATE_LIMIT_PER_MINUTE ?? "120",
+);
+const rateBuckets = new Map<string, { tokens: number; updatedAt: number }>();
+
+function rateLimit(key: string): boolean {
+  if (!Number.isFinite(RATE_LIMIT_PER_MINUTE) || RATE_LIMIT_PER_MINUTE <= 0) {
+    return true;
+  }
+  const now = Date.now();
+  const refillPerMs = RATE_LIMIT_PER_MINUTE / 60_000;
+  const bucket = rateBuckets.get(key) ?? {
+    tokens: RATE_LIMIT_PER_MINUTE,
+    updatedAt: now,
+  };
+  const elapsed = now - bucket.updatedAt;
+  bucket.tokens = Math.min(
+    RATE_LIMIT_PER_MINUTE,
+    bucket.tokens + elapsed * refillPerMs,
+  );
+  bucket.updatedAt = now;
+  if (bucket.tokens < 1) {
+    rateBuckets.set(key, bucket);
+    return false;
+  }
+  bucket.tokens -= 1;
+  rateBuckets.set(key, bucket);
+  // Opportunistic GC to keep the map bounded.
+  if (rateBuckets.size > 10_000) {
+    for (const [k, v] of rateBuckets) {
+      if (now - v.updatedAt > 5 * 60_000) rateBuckets.delete(k);
+    }
+  }
+  return true;
+}
+
+/**
+ * Resolve the client IP honouring only `TRUSTED_PROXY_HOPS` proxy hops.
+ * Defaults to 1 (single reverse proxy / ingress in front of the app).
+ * Set to 0 to ignore X-Forwarded-For entirely (use the socket peer).
+ */
+function getClientIp(request: NextRequest): string {
+  const trustedHops = Math.max(
+    0,
+    Number(process.env.TRUSTED_PROXY_HOPS ?? "1") || 0,
+  );
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (trustedHops === 0) {
+    return realIp || "127.0.0.1";
+  }
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    // Take the IP `trustedHops` from the right — that's the last hop we trust.
+    const idx = parts.length - trustedHops;
+    if (idx >= 0 && parts[idx]) return parts[idx];
+    if (parts[0]) return parts[0];
+  }
+  return realIp || "127.0.0.1";
+}
+
 async function getWebsiteDomain(websiteId: string): Promise<string | null> {
   const cached = websiteCache.get(websiteId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.domain;
@@ -31,6 +97,22 @@ async function getWebsiteDomain(websiteId: string): Promise<string | null> {
   return null;
 }
 
+const MAX_CUSTOM_KEYS = 32;
+const MAX_CUSTOM_VALUE_LEN = 1024;
+
+const customDataSchema = z
+  .record(
+    z.union([
+      z.string().max(MAX_CUSTOM_VALUE_LEN),
+      z.number().finite(),
+      z.boolean(),
+    ]),
+  )
+  .refine(
+    (obj) => Object.keys(obj).length <= MAX_CUSTOM_KEYS,
+    `data may contain at most ${MAX_CUSTOM_KEYS} keys`,
+  );
+
 const collectSchema = z.object({
   websiteId: z.union([z.string().uuid(), z.coerce.string().regex(/^\d+$/)]),
   url: z.string().max(2048),
@@ -39,12 +121,27 @@ const collectSchema = z.object({
   screen: z.string().max(20).default(""),
   language: z.string().max(32).default(""),
   name: z.string().max(255).default("pageview"),
-  data: z.record(z.union([z.string(), z.number(), z.boolean()])).optional(),
+  data: customDataSchema.optional(),
   userId: z.string().max(255).optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+
+    if (!rateLimit(ip)) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded" },
+        {
+          status: 429,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "no-store",
+          },
+        },
+      );
+    }
+
     const body = await request.json();
     const payload = collectSchema.parse(body);
 
@@ -54,29 +151,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid website" }, { status: 403 });
     }
 
-    // Validate origin matches the registered domain (anti-spam)
-    const origin = request.headers.get("origin") || "";
-    if (origin) {
-      try {
-        const originHost = new URL(origin).hostname;
-        if (
-          originHost !== websiteDomain &&
-          !originHost.endsWith(`.${websiteDomain}`)
-        ) {
-          return NextResponse.json(
-            { error: "Origin mismatch" },
-            { status: 403 },
-          );
-        }
-      } catch {
-        // Malformed origin header — allow (server-side calls may lack origin)
-      }
+    // Origin must be present and match the registered domain. Missing or
+    // malformed Origin headers are rejected (fail-closed) to prevent
+    // server-side callers from poisoning analytics for known websiteIds.
+    const origin = request.headers.get("origin");
+    if (!origin) {
+      return NextResponse.json(
+        { error: "Origin required" },
+        { status: 403 },
+      );
     }
-
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "127.0.0.1";
+    let originHost: string;
+    try {
+      originHost = new URL(origin).hostname;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid origin" },
+        { status: 403 },
+      );
+    }
+    if (
+      originHost !== websiteDomain &&
+      !originHost.endsWith(`.${websiteDomain}`)
+    ) {
+      return NextResponse.json(
+        { error: "Origin mismatch" },
+        { status: 403 },
+      );
+    }
 
     const userAgent = request.headers.get("user-agent") || "";
 

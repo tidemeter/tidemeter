@@ -64,8 +64,8 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
   private buildFilterClause(
     filters?: StatsFilter[],
     table: "page_events" | "sessions" = "page_events",
-  ): string {
-    if (!filters || filters.length === 0) return "";
+  ): { clause: string; params: Record<string, unknown> } {
+    if (!filters || filters.length === 0) return { clause: "", params: {} };
 
     const eventColumns: Record<string, string> = {
       url_path: "url_path",
@@ -104,24 +104,34 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
     };
 
     const columns = table === "sessions" ? sessionColumns : eventColumns;
+    const parts: string[] = [];
+    const params: Record<string, unknown> = {};
 
-    return filters
+    filters
       .filter((f) => columns[f.property])
-      .map((f) => {
+      .forEach((f, idx) => {
         const col = columns[f.property];
-        const escaped = f.value.replace(/'/g, "\\'").replace(/[%_\\]/g, "\\$&");
+        const name = `flt_${idx}`;
         switch (f.operator) {
           case "eq":
-            return `AND ${col} = '${escaped}'`;
+            parts.push(`AND ${col} = {${name}:String}`);
+            params[name] = f.value;
+            break;
           case "neq":
-            return `AND ${col} != '${escaped}'`;
+            parts.push(`AND ${col} != {${name}:String}`);
+            params[name] = f.value;
+            break;
           case "contains":
-            return `AND ${col} LIKE '%${escaped}%'`;
+            parts.push(`AND ${col} LIKE {${name}:String}`);
+            params[name] = `%${escapeLikePattern(f.value)}%`;
+            break;
           default:
-            return `AND ${col} = '${escaped}'`;
+            parts.push(`AND ${col} = {${name}:String}`);
+            params[name] = f.value;
         }
-      })
-      .join("\n          ");
+      });
+
+    return { clause: parts.join("\n          "), params };
   }
 
   async insertEvent(event: PageEvent): Promise<void> {
@@ -205,8 +215,8 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
 
   async getStats(query: StatsQuery): Promise<StatsResult> {
     const { websiteId, dateRange, filters } = query;
-    const eventFilterClause = this.buildFilterClause(filters, "page_events");
-    const sessionFilterClause = this.buildFilterClause(filters, "sessions");
+    const eventFilter = this.buildFilterClause(filters, "page_events");
+    const sessionFilter = this.buildFilterClause(filters, "sessions");
 
     const result = await this.client.query({
       query: `
@@ -219,12 +229,13 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND event_name = 'pageview'
           AND timestamp >= {from:DateTime}
           AND timestamp <= {to:DateTime}
-          ${eventFilterClause}
+          ${eventFilter.clause}
       `,
       query_params: {
         websiteId,
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
+        ...eventFilter.params,
       },
       format: "JSONEachRow",
     });
@@ -247,12 +258,13 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND started_at >= {from:DateTime}
           AND started_at <= {to:DateTime}
           AND sign = 1
-          ${sessionFilterClause}
+          ${sessionFilter.clause}
       `,
       query_params: {
         websiteId,
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
+        ...sessionFilter.params,
       },
       format: "JSONEachRow",
     });
@@ -279,7 +291,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
     interval: TimeInterval,
   ): Promise<TimeSeriesResult> {
     const { websiteId, dateRange, filters } = query;
-    const filterClause = this.buildFilterClause(filters, "page_events");
+    const filter = this.buildFilterClause(filters, "page_events");
 
     const truncFn =
       interval === "hour"
@@ -302,7 +314,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND event_name = 'pageview'
           AND timestamp >= {from:DateTime}
           AND timestamp <= {to:DateTime}
-          ${filterClause}
+          ${filter.clause}
         GROUP BY date
         ORDER BY date
       `,
@@ -310,6 +322,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         websiteId,
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
+        ...filter.params,
       },
       format: "JSONEachRow",
     });
@@ -344,7 +357,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
       return this.getSessionBreakdown(query, property, limit);
     }
 
-    const filterClause = this.buildFilterClause(filters, "page_events");
+    const filter = this.buildFilterClause(filters, "page_events");
 
     const result = await this.client.query({
       query: `
@@ -358,7 +371,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND timestamp >= {from:DateTime}
           AND timestamp <= {to:DateTime}
           AND ${property} != ''
-          ${filterClause}
+          ${filter.clause}
         GROUP BY value
         ORDER BY visitors DESC
         LIMIT {limit:UInt32}
@@ -368,6 +381,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
         limit,
+        ...filter.params,
       },
       format: "JSONEachRow",
     });
@@ -403,7 +417,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
     limit: number,
   ): Promise<BreakdownResult> {
     const { websiteId, dateRange, filters } = query;
-    const filterClause = this.buildFilterClause(filters, "sessions");
+    const filter = this.buildFilterClause(filters, "sessions");
 
     const result = await this.client.query({
       query: `
@@ -417,7 +431,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND started_at <= {to:DateTime}
           AND sign = 1
           AND ${property} != ''
-          ${filterClause}
+          ${filter.clause}
         GROUP BY value
         ORDER BY visitors DESC
         LIMIT {limit:UInt32}
@@ -427,6 +441,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
         limit,
+        ...filter.params,
       },
       format: "JSONEachRow",
     });
@@ -547,8 +562,11 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
     const to = Math.floor(dateRange.to.getTime() / 1000);
 
     const searchClause = search
-      ? `AND visitor_id LIKE '%${escapeCh(search)}%'`
+      ? `AND visitor_id LIKE {search:String}`
       : "";
+    const searchParams: Record<string, unknown> = search
+      ? { search: `%${escapeLikePattern(search)}%` }
+      : {};
 
     // Count total distinct visitors
     const totalResult = await this.client.query({
@@ -561,7 +579,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           AND sign = 1
           ${searchClause}
       `,
-      query_params: { websiteId, from, to },
+      query_params: { websiteId, from, to, ...searchParams },
       format: "JSONEachRow",
     });
     const totalRows = await totalResult.json<{ total: string }>();
@@ -594,7 +612,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         LIMIT {pageSize:UInt32}
         OFFSET {offset:UInt32}
       `,
-      query_params: { websiteId, from, to, pageSize, offset },
+      query_params: { websiteId, from, to, pageSize, offset, ...searchParams },
       format: "JSONEachRow",
     });
 
@@ -978,19 +996,24 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
       };
     }
 
-    const filterClause = this.buildFilterClause(filters, "page_events");
+    const filter = this.buildFilterClause(filters, "page_events");
 
     // Build per-step match conditions for ClickHouse windowFunnel
-    const stepConditions = steps.map((step) => {
+    const stepParams: Record<string, unknown> = {};
+    const stepConditions = steps.map((step, i) => {
       const column =
         step.matchType === "event_name" ? "event_name" : "url_path";
+      const name = `step_${i}`;
       switch (step.matchOperator) {
         case "contains":
-          return `position(${column}, '${escapeCh(step.matchValue)}') > 0`;
+          stepParams[name] = step.matchValue;
+          return `position(${column}, {${name}:String}) > 0`;
         case "starts_with":
-          return `startsWith(${column}, '${escapeCh(step.matchValue)}')`;
+          stepParams[name] = step.matchValue;
+          return `startsWith(${column}, {${name}:String})`;
         default:
-          return `${column} = '${escapeCh(step.matchValue)}'`;
+          stepParams[name] = step.matchValue;
+          return `${column} = {${name}:String}`;
       }
     });
 
@@ -1012,7 +1035,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
           WHERE website_id = {websiteId:UUID}
             AND timestamp >= {from:DateTime}
             AND timestamp <= {to:DateTime}
-            ${filterClause}
+            ${filter.clause}
           GROUP BY visitor_id
         )
         GROUP BY level
@@ -1022,6 +1045,8 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         websiteId,
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
+        ...filter.params,
+        ...stepParams,
       },
       format: "JSONEachRow",
     });
@@ -1078,7 +1103,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
 
   async getRetention(query: RetentionQuery): Promise<RetentionResult> {
     const { websiteId, dateRange, granularity, filters } = query;
-    const filterClause = this.buildFilterClause(filters, "page_events");
+    const filter = this.buildFilterClause(filters, "page_events");
 
     const truncFn =
       granularity === "day"
@@ -1105,7 +1130,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
             AND event_name = 'pageview'
             AND timestamp >= {from:DateTime}
             AND timestamp <= {to:DateTime}
-            ${filterClause}
+            ${filter.clause}
           GROUP BY visitor_id
         ),
         visitor_activity AS (
@@ -1117,7 +1142,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
             AND event_name = 'pageview'
             AND timestamp >= {from:DateTime}
             AND timestamp <= {to:DateTime}
-            ${filterClause}
+            ${filter.clause}
         ),
         retention_data AS (
           SELECT
@@ -1139,6 +1164,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
         websiteId,
         from: Math.floor(dateRange.from.getTime() / 1000),
         to: Math.floor(dateRange.to.getTime() / 1000),
+        ...filter.params,
       },
       format: "JSONEachRow",
     });
@@ -1190,7 +1216,7 @@ export class ClickHouseAnalyticsRepository implements AnalyticsRepository {
   }
 }
 
-/** Escape single quotes for ClickHouse string literals */
-function escapeCh(value: string): string {
-  return value.replace(/'/g, "\\'");
+/** Escape ClickHouse LIKE wildcards so user input is treated literally inside a parameterized LIKE pattern. */
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
 }

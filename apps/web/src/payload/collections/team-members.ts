@@ -37,7 +37,13 @@ export const TeamMembers: CollectionConfig = {
     },
   ],
   access: {
-    create: ({ req }) => !!req.user,
+    // Only admins can directly create/modify memberships via the REST API.
+    // Self-service joins (via team accessCode) must go through a dedicated,
+    // server-validated endpoint — never the unrestricted REST create.
+    create: ({ req }) => {
+      const roles = req.user?.roles;
+      return Array.isArray(roles) && roles.includes("admin");
+    },
     read: ({ req }) => {
       const roles = req.user?.roles;
       if (Array.isArray(roles) && roles.includes("admin")) return true;
