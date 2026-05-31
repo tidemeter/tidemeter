@@ -231,6 +231,8 @@ If **any** of these steps fail, `onInit` re-throws and the pod fails its readine
 
 Init is triggered by any request that imports the Payload config — including `/api/health`, which is hit by the readiness/startup probes. So a freshly-rolled pod self-migrates as soon as the probe starts. The database user just needs `CREATE` privileges.
 
+> **No tables right after deploy?** That's expected for a few seconds. Migrations don't run at process start — they run on the **first request** that touches Payload. If you `kubectl apply` and immediately inspect the DB, it will be empty until the readiness probe hits `/api/health` (or you `curl` it yourself). Once the pod reports `Ready`, the schema is in place. If tables still don't appear, check pod logs for `[payload:onInit]` errors and verify the `DATABASE_URL` role has `CREATE` privileges.
+
 > The first probe after a fresh pod start can take longer than usual (especially with `DEMO_MODE=true`, which generates ~1500 analytics events). The Helm/Kustomize manifests in `cluster/apps/tidemeter/` use a `startupProbe` to give init enough time.
 
 ### Adding a schema change (production)
