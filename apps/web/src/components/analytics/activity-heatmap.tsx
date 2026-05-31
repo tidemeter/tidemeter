@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@tidemeter/ui";
+import { Card } from "@tidemeter/ui";
 import { cn } from "@tidemeter/ui";
 import type { ActivityHeatmapPoint } from "@tidemeter/analytics";
 

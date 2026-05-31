@@ -1,4 +1,4 @@
-import type { PageEvent, AnalyticsRepository } from "@tidemeter/analytics";
+import type { PageEvent } from "@tidemeter/analytics";
 import { getAnalyticsRepository } from "@/lib/analytics";
 
 const FLUSH_SIZE = 100;

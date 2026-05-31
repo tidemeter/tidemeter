@@ -18,13 +18,7 @@ interface WebsiteListProps {
   isDemoMode?: boolean;
 }
 
-function EmptyState({
-  onAdd,
-  isDemoMode,
-}: {
-  onAdd: () => void;
-  isDemoMode?: boolean;
-}) {
+function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <Card className="flex flex-col items-center justify-center py-20">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 dark:bg-gray-800">
@@ -106,7 +100,7 @@ export function WebsiteList({
       </div>
 
       {websites.length === 0 ? (
-        <EmptyState onAdd={() => setDialogOpen(true)} isDemoMode={isDemoMode} />
+        <EmptyState onAdd={() => setDialogOpen(true)} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {websites.map((site) => (

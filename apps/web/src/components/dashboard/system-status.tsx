@@ -168,6 +168,7 @@ export function SystemStatus() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial health check kicked off on mount
     runChecks();
   }, [runChecks]);
 

@@ -2,14 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  StatCard,
-  Badge,
-} from "@tidemeter/ui";
+import { Card, StatCard, Badge } from "@tidemeter/ui";
 import { cn } from "@tidemeter/ui";
 import { formatNumber, formatDuration } from "@/lib/utils/date";
 import { ActivityHeatmap } from "./activity-heatmap";
@@ -17,7 +10,6 @@ import { SessionTimeline } from "./session-timeline";
 import type {
   VisitorProfileResult,
   VisitorDevice,
-  VisitorSession,
 } from "@tidemeter/analytics";
 
 interface VisitorProfileProps {

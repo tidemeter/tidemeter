@@ -53,15 +53,33 @@ function ChartSkeleton() {
   );
 }
 
-function ComparisonTooltip({ active, payload, label }: any) {
+interface ComparisonTooltipProps {
+  active?: boolean;
+  label?: string;
+  payload?: Array<{ payload?: Record<string, unknown> }>;
+}
+
+function ComparisonTooltip({
+  active,
+  payload,
+  label,
+}: ComparisonTooltipProps) {
   if (!active || !payload?.length) return null;
-  const data = payload[0]?.payload;
+  const data = payload[0]?.payload as
+    | {
+        visitors?: number;
+        pageviews?: number;
+        prevVisitors?: number | null;
+        prevPageviews?: number | null;
+        prevDate?: string;
+      }
+    | undefined;
   if (!data) return null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-[13px] shadow-lg dark:border-gray-700 dark:bg-gray-900">
       <p className="mb-1 font-semibold text-gray-900 dark:text-white">
-        {formatDate(label)}
+        {label ? formatDate(label) : null}
       </p>
       <p className="text-primary-500">
         Visitors: {data.visitors}

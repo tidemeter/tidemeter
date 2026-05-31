@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -22,38 +22,38 @@ interface UserSettingsProps {
   isReadOnly?: boolean;
 }
 
+type Message = { type: "success" | "error"; text: string };
+
+function MessageBanner({ message }: { message: Message }) {
+  return (
+    <div
+      className={`rounded-lg px-4 py-3 text-sm ${
+        message.type === "success"
+          ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+          : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+      }`}
+    >
+      {message.text}
+    </div>
+  );
+}
+
 export function UserSettings({ user, isReadOnly = false }: UserSettingsProps) {
   const router = useRouter();
 
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMessage, setProfileMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [profileMessage, setProfileMessage] = useState<Message | null>(null);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<Message | null>(null);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteMessage, setDeleteMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  useEffect(() => {
-    if (user) {
-      setDisplayName(user.displayName ?? "");
-      setEmail(user.email ?? "");
-    }
-  }, [user]);
+  const [deleteMessage, setDeleteMessage] = useState<Message | null>(null);
 
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -169,24 +169,6 @@ export function UserSettings({ user, isReadOnly = false }: UserSettingsProps) {
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }
-
-  function MessageBanner({
-    message,
-  }: {
-    message: { type: "success" | "error"; text: string };
-  }) {
-    return (
-      <div
-        className={`rounded-lg px-4 py-3 text-sm ${
-          message.type === "success"
-            ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-            : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-        }`}
-      >
-        {message.text}
-      </div>
-    );
   }
 
   if (!user) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -105,13 +105,16 @@ export function AnalyticsOverview({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const currentRange: DateRange = {
-    from: new Date(dateRange.from),
-    to: new Date(dateRange.to),
-    label:
-      searchParams.get("label") ||
-      (searchParams.get("from") ? "Custom" : "Last 30 days"),
-  };
+  const currentRange: DateRange = useMemo(
+    () => ({
+      from: new Date(dateRange.from),
+      to: new Date(dateRange.to),
+      label:
+        searchParams.get("label") ||
+        (searchParams.get("from") ? "Custom" : "Last 30 days"),
+    }),
+    [dateRange.from, dateRange.to, searchParams],
+  );
 
   const buildUrl = useCallback(
     (

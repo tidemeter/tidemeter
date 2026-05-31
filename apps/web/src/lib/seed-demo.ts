@@ -5,7 +5,7 @@
  * Uses Payload Local API (no HTTP needed) to create the demo user,
  * website, and funnels, then inserts analytics data directly via SQL.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Payload } from "payload";
 import { hasAnalyticsData, seedAnalyticsData } from "@tidemeter/analytics";
 

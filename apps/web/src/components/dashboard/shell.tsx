@@ -255,7 +255,6 @@ function getInitials(user: { displayName?: string; email: string }): string {
 export function DashboardShell({
   children,
   user,
-  isDemoMode = false,
   websites = [],
 }: {
   children: React.ReactNode;

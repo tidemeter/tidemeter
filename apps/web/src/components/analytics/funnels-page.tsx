@@ -5,8 +5,6 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
-  CardHeader,
-  CardTitle,
   CardContent,
   Button,
   DateRangePicker,
@@ -447,12 +445,14 @@ export function FunnelsPage({
   }, [websiteId, selectedFunnelId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch with loading state
     loadFunnels();
   }, [loadFunnels]);
 
   // Fetch funnel analysis
   useEffect(() => {
     if (!selectedFunnelId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale result when selection unset
       setFunnelResult(null);
       return;
     }

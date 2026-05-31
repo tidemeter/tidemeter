@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,14 +8,12 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-  Button,
   DateRangePicker,
   cn,
   type DateRange,
 } from "@tidemeter/ui";
 import type {
   RetentionResult,
-  RetentionCohort,
   CohortGranularity,
 } from "@tidemeter/analytics";
 
@@ -296,11 +294,17 @@ export function RetentionPage({
   const [data, setData] = useState<RetentionResult | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const currentRange: DateRange = {
-    from: new Date(initialDateRange.from),
-    to: new Date(initialDateRange.to),
-    label: searchParams.get("label") || "Last 90 days",
-  };
+  const currentRange: DateRange = useMemo(
+    () => ({
+      from: new Date(initialDateRange.from),
+      to: new Date(initialDateRange.to),
+      label: searchParams.get("label") || "Last 90 days",
+    }),
+    [initialDateRange.from, initialDateRange.to, searchParams],
+  );
+
+  const rangeFromMs = currentRange.from.getTime();
+  const rangeToMs = currentRange.to.getTime();
 
   const fetchRetention = useCallback(async () => {
     setLoading(true);
@@ -323,14 +327,12 @@ export function RetentionPage({
     } finally {
       setLoading(false);
     }
-  }, [
-    websiteId,
-    currentRange.from.getTime(),
-    currentRange.to.getTime(),
-    granularity,
-  ]);
+    // currentRange.from/to are derived from these timestamps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [websiteId, rangeFromMs, rangeToMs, granularity]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch with loading state
     fetchRetention();
   }, [fetchRetention]);
 

@@ -7,7 +7,7 @@
     "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo -p 3700",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
     "clean": "rm -rf .next .turbo",
     "generate:types": "payload generate:types",
     "test": "vitest run"
@@ -37,6 +37,8 @@
     "@types/node": "^22.19.19",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.6",
     "sass": "^1.100.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.9.3",

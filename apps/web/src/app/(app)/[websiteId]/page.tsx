@@ -74,14 +74,17 @@ function parseFiltersFromParam(filtersParam?: string): StatsFilter[] {
   try {
     const parsed = JSON.parse(filtersParam);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (f: any) =>
-        typeof f.property === "string" &&
-        typeof f.operator === "string" &&
-        typeof f.value === "string" &&
-        VALID_FILTER_PROPERTIES.has(f.property) &&
-        VALID_FILTER_OPERATORS.has(f.operator),
-    );
+    return parsed.filter((f: unknown): f is StatsFilter => {
+      if (!f || typeof f !== "object") return false;
+      const candidate = f as Record<string, unknown>;
+      return (
+        typeof candidate.property === "string" &&
+        typeof candidate.operator === "string" &&
+        typeof candidate.value === "string" &&
+        VALID_FILTER_PROPERTIES.has(candidate.property) &&
+        VALID_FILTER_OPERATORS.has(candidate.operator)
+      );
+    });
   } catch {
     return [];
   }

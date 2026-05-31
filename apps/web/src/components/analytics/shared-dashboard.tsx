@@ -85,7 +85,6 @@ function SimpleBreakdown({
 }
 
 export function SharedDashboard({
-  shareId,
   period,
   website,
   stats,

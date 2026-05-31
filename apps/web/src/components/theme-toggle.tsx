@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 function SunIcon() {
   return (
@@ -39,14 +39,10 @@ function MoonIcon() {
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    if (stored === "light") {
-      setTheme("light");
-    }
-  }, []);
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    return localStorage.getItem("theme") === "light" ? "light" : "dark";
+  });
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
