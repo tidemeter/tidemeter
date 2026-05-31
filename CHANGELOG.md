@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.12](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.11...tidemeter-v0.1.12) (2026-05-31)
+
+
+### Features
+
+* add nodemailer and resend as email providers ([7d446a3](https://github.com/tidemeter/tidemeter/commit/7d446a315d2e7486d9e3f4af8ad8790507d69df8))
+
 ## [0.1.11](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.10...tidemeter-v0.1.11) (2026-05-30)
 
 
