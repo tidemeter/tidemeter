@@ -4,6 +4,7 @@ import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { runMigrations, runClickHouseMigrations } from "@tidemeter/analytics";
+import { buildEmailAdapter } from "./lib/email";
 import { seedDemoData } from "./lib/seed-demo";
 import { Users } from "./payload/collections/users";
 import { Websites } from "./payload/collections/websites";
@@ -47,6 +48,8 @@ export default buildConfig({
   editor: lexicalEditor(),
 
   secret: process.env.PAYLOAD_SECRET || "dev-only-insecure-secret-change-me",
+
+  email: buildEmailAdapter(),
 
   onInit: async (payload) => {
     if (process.env.NODE_ENV === "production" && !process.env.PAYLOAD_SECRET) {

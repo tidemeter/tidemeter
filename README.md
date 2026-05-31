@@ -178,8 +178,42 @@ All configuration is done through environment variables. Copy `.env.example` to 
 | `SESSION_SALT_SECRET`    | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
 | `GEOIP_DB_PATH`          | Path to MaxMind GeoLite2-City.mmdb (optional)                  | —                                                           |
 | `DEMO_MODE`              | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
+| `RESEND_API_KEY`         | Resend API key — if set, email is sent via Resend HTTP API     | —                                                           |
+| `SMTP_HOST`              | SMTP server for password reset / verification email (optional) | —                                                           |
+| `SMTP_PORT`              | SMTP server port                                               | `587`                                                       |
+| `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials                                          | —                                                           |
+| `SMTP_FROM_ADDRESS`      | From address for outgoing email                                | `no-reply@localhost`                                        |
+| `SMTP_FROM_NAME`         | From name for outgoing email                                   | `TideMeter`                                                 |
 
 See [`.env.example`](.env.example) for the full annotated reference.
+
+## First Admin & Email
+
+On the very first boot the database has no users. Visit `/admin` and PayloadCMS will redirect you to `/admin/create-first-user` to create the initial admin account — **no email server required**. Subsequent users are created from the admin panel by an existing admin.
+
+Email is **optional**:
+
+- If you never use "forgot password" (e.g. a single-user, private deployment) you can leave it unconfigured. Payload will print a one-time `WARN: No email adapter provided` on startup and any email it would send is written to stdout.
+- To enable real delivery TideMeter supports two backends, picked in this order:
+  1. **Resend** — set `RESEND_API_KEY`. Uses Resend's HTTP API via `@payloadcms/email-resend` (no SMTP port required).
+  2. **SMTP / Nodemailer** — set `SMTP_HOST`. Works with any SMTP provider (your own Postfix, Gmail, SendGrid, Mailgun, Postmark, AWS SES, …).
+
+```env
+# Either set this …
+RESEND_API_KEY=re_xxxxxxxxxxxx
+
+# … or these:
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=your-smtp-username   # SendGrid: literal "apikey"; Mailgun: postmaster@<domain>; Gmail: full address
+SMTP_PASSWORD=your-smtp-password
+
+# Shared "From" header (applies to both backends):
+SMTP_FROM_ADDRESS=no-reply@your-domain.com
+SMTP_FROM_NAME=TideMeter
+```
+
+You can also change your password at any time from the admin panel (`/admin/account`) without needing email.
 
 ## Database Migrations
 

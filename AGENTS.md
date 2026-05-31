@@ -69,6 +69,8 @@ The Docker image is built on GitHub Actions **without any database connection**.
 - Cookie-based: `payload-token` HTTP-only cookie
 - Route protection via `proxy.ts` (Next.js 16 pattern — **NOT middleware.ts**)
 - Login: `POST /api/users/login`, Logout: `POST /api/users/logout`, Session: `GET /api/users/me`
+- **First admin**: when the users table is empty, `/admin` auto-redirects to `/admin/create-first-user` (no email needed)
+- **Email (optional)**: `apps/web/src/lib/email.ts` selects an adapter from env vars in this order: `RESEND_API_KEY` → `@payloadcms/email-resend` (HTTP API); else `SMTP_HOST` → `@payloadcms/email-nodemailer` (SMTP); else `undefined` (Payload's console transport — fine for single-user deployments). Shared `SMTP_FROM_ADDRESS` / `SMTP_FROM_NAME` apply to both backends.
 
 ### Event Ingestion Pipeline
 
