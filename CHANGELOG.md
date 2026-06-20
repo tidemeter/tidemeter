@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.15](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.14...tidemeter-v0.1.15) (2026-06-20)
+
+
+### Bug Fixes
+
+* packages update, fixed vulnerabilities ([c3243ad](https://github.com/tidemeter/tidemeter/commit/c3243adec516525865cf724f1dbe029c3f396997))
+* return correct origin for cors fixing ([475ab3a](https://github.com/tidemeter/tidemeter/commit/475ab3a5f35116410f478834d3128027fd0fe07d))
+
 ## [0.1.14](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.13...tidemeter-v0.1.14) (2026-06-20)
 
 
