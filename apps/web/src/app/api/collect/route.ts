@@ -149,7 +149,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON" },
+        { status: 400, headers: CORS_HEADERS },
+      );
+    }
     const payload = collectSchema.parse(body);
 
     // Validate the website exists and is active
@@ -192,11 +200,15 @@ export async function POST(request: NextRequest) {
 
     const userAgent = request.headers.get("user-agent") || "";
 
-    await processEvent({
-      ...payload,
-      ip,
-      userAgent,
-    });
+    try {
+      await processEvent({
+        ...payload,
+        ip,
+        userAgent,
+      });
+    } catch (err) {
+      console.error("[collect] Failed to process event:", err);
+    }
 
     return new NextResponse(null, {
       status: 202,
