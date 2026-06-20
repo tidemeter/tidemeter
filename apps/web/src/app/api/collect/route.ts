@@ -125,6 +125,13 @@ const collectSchema = z.object({
   userId: z.string().max(255).optional(),
 });
 
+// Shared CORS headers for all /api/collect responses (including errors)
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 export async function POST(request: NextRequest) {
   try {
     const ip = getClientIp(request);
@@ -135,7 +142,7 @@ export async function POST(request: NextRequest) {
         {
           status: 429,
           headers: {
-            "Access-Control-Allow-Origin": "*",
+            ...CORS_HEADERS,
             "Cache-Control": "no-store",
           },
         },
@@ -148,7 +155,10 @@ export async function POST(request: NextRequest) {
     // Validate the website exists and is active
     const websiteDomain = await getWebsiteDomain(payload.websiteId);
     if (!websiteDomain) {
-      return NextResponse.json({ error: "Invalid website" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Invalid website" },
+        { status: 403, headers: CORS_HEADERS },
+      );
     }
 
     // Origin must be present and match the registered domain. Missing or
@@ -158,7 +168,7 @@ export async function POST(request: NextRequest) {
     if (!origin) {
       return NextResponse.json(
         { error: "Origin required" },
-        { status: 403 },
+        { status: 403, headers: CORS_HEADERS },
       );
     }
     let originHost: string;
@@ -167,7 +177,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "Invalid origin" },
-        { status: 403 },
+        { status: 403, headers: CORS_HEADERS },
       );
     }
     if (
@@ -176,7 +186,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: "Origin mismatch" },
-        { status: 403 },
+        { status: 403, headers: CORS_HEADERS },
       );
     }
 
@@ -191,28 +201,28 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, {
       status: 202,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "Content-Type",
+        ...CORS_HEADERS,
         "Cache-Control": "no-store",
       },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid payload" },
+        { status: 400, headers: CORS_HEADERS },
+      );
     }
     console.error("[collect] Error processing event:", error);
-    return new NextResponse(null, { status: 500 });
+    return new NextResponse(null, {
+      status: 500,
+      headers: CORS_HEADERS,
+    });
   }
 }
 
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST",
-      "Access-Control-Allow-Headers": "Content-Type",
-    },
+    headers: CORS_HEADERS,
   });
 }
