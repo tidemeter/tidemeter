@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.14](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.13...tidemeter-v0.1.14) (2026-06-20)
+
+
+### Features
+
+* missing CORS headers on error responses ([8ea321a](https://github.com/tidemeter/tidemeter/commit/8ea321aec63b3c0029981d8cc4c24ecc1158cfcf))
+
+
+### Bug Fixes
+
+* improve logging, excluded api/ from the matcher ([b1936ce](https://github.com/tidemeter/tidemeter/commit/b1936cecd45f1bcb4a7321f0e6fc64ecae4ddf8e))
+
 ## [0.1.13](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.12...tidemeter-v0.1.13) (2026-05-31)
 
 
