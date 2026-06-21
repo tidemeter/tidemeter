@@ -32,14 +32,15 @@ describe("applyWebsiteBeforeChange", () => {
     expect(data.createdBy).toBe(7);
   });
 
-  it("does not overwrite an explicitly provided publicId on create", () => {
+  it("always generates the publicId server-side on create (ignores client value)", () => {
     const data = applyWebsiteBeforeChange({
       req: { user: { id: 1 } },
       operation: "create",
       data: { publicId: "ProvidedId012345" },
       originalDoc: null,
     });
-    expect(data.publicId).toBe("ProvidedId012345");
+    expect(data.publicId).not.toBe("ProvidedId012345");
+    expect(data.publicId).toMatch(PUBLIC_ID_RE);
   });
 
   it("keeps the existing publicId unchanged on update (immutable)", () => {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getPayload } from "payload";
-import type { Where } from "payload";
 import config from "@payload-config";
 import { processEvent } from "@/lib/ingestion/processor";
 import { getCachedWebsite, setCachedWebsite } from "@/lib/website-cache";
@@ -93,20 +92,36 @@ async function resolveWebsite(
 
   try {
     const payload = await getPayload({ config });
-    // Match the public tracking id first; fall back to the numeric row id so
-    // snippets generated before publicId existed keep working.
-    const or: Where[] = [{ publicId: { equals: websiteId } }];
-    if (/^\d+$/.test(websiteId)) {
-      or.push({ id: { equals: websiteId } });
-    }
-    const result = await payload.find({
+    // Resolve by public id first so a public id always wins; only fall back to
+    // the legacy numeric row id when no active website matches, so snippets
+    // generated before publicId existed keep working without any ambiguity.
+    let doc: { id: string | number; domain: string } | undefined;
+    const byPublicId = await payload.find({
       collection: "websites",
-      where: { and: [{ isActive: { equals: true } }, { or }] },
+      where: {
+        and: [
+          { isActive: { equals: true } },
+          { publicId: { equals: websiteId } },
+        ],
+      },
       limit: 1,
       depth: 0,
     });
-    if (result.docs.length > 0) {
-      const doc = result.docs[0] as { id: string | number; domain: string };
+    doc = byPublicId.docs[0] as
+      | { id: string | number; domain: string }
+      | undefined;
+    if (!doc && /^\d+$/.test(websiteId)) {
+      const byId = await payload.find({
+        collection: "websites",
+        where: {
+          and: [{ isActive: { equals: true } }, { id: { equals: websiteId } }],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      doc = byId.docs[0] as { id: string | number; domain: string } | undefined;
+    }
+    if (doc) {
       const resolved = { id: String(doc.id), domain: doc.domain };
       setCachedWebsite(websiteId, resolved);
       return resolved;

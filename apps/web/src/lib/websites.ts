@@ -2,7 +2,6 @@ import { getPayload } from "payload";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import config from "@payload-config";
-import type { Where } from "payload";
 import type { Website } from "@/payload-types";
 import { canAccessWebsite } from "@/lib/website-access";
 
@@ -20,19 +19,31 @@ export { canAccessWebsite } from "@/lib/website-access";
  */
 export async function resolveWebsite(param: string): Promise<Website | null> {
   const payload = await getPayload({ config });
-  const or: Where[] = [{ publicId: { equals: param } }];
-  // Only attempt an id match for numeric values; the id column is a serial
-  // integer and a non-numeric value would be an invalid comparison.
-  if (/^\d+$/.test(param)) {
-    or.push({ id: { equals: param } });
-  }
-  const result = await payload.find({
+
+  // Resolve by public id first so a public id always wins; only fall back to
+  // the legacy numeric row id when nothing matches. This removes any ambiguity
+  // between a public id and another website's numeric id.
+  const byPublicId = await payload.find({
     collection: "websites",
-    where: { or },
+    where: { publicId: { equals: param } },
     limit: 1,
     depth: 0,
   });
-  return (result.docs[0] as Website | undefined) ?? null;
+  if (byPublicId.docs[0]) return byPublicId.docs[0] as Website;
+
+  // Only attempt an id match for numeric values; the id column is a serial
+  // integer and a non-numeric value would be an invalid comparison.
+  if (/^\d+$/.test(param)) {
+    const byId = await payload.find({
+      collection: "websites",
+      where: { id: { equals: param } },
+      limit: 1,
+      depth: 0,
+    });
+    if (byId.docs[0]) return byId.docs[0] as Website;
+  }
+
+  return null;
 }
 
 /**

@@ -22,7 +22,10 @@ type WebsiteBeforeChangeArgs = {
 /**
  * `beforeChange` logic for the Websites collection, extracted for testing.
  *
- * - On create: set `createdBy` from the request user and generate a `publicId`.
+ * - On create: set `createdBy` from the request user and always generate the
+ *   `publicId` server-side. Any client-supplied value is ignored so callers
+ *   cannot choose malformed, short, or all-numeric ids that could collide with
+ *   a legacy numeric route.
  * - On update: the `publicId` is immutable. Any client-supplied value (e.g. a
  *   REST PATCH) is ignored and the stored id is preserved; a legacy row that
  *   never received one is backfilled.
@@ -37,9 +40,7 @@ export function applyWebsiteBeforeChange({
     if (req.user) {
       data.createdBy = req.user.id;
     }
-    if (!data.publicId) {
-      data.publicId = generatePublicId();
-    }
+    data.publicId = generatePublicId();
   } else {
     data.publicId = originalDoc?.publicId ?? generatePublicId();
   }
@@ -87,6 +88,14 @@ export const Websites: CollectionConfig = {
       unique: true,
       index: true,
       label: "Public Tracking ID",
+      // Defense in depth: even though the value is always generated in
+      // beforeChange, reject anything that is not a 16-char Base64URL string.
+      validate: (value: string | string[] | null | undefined) => {
+        if (typeof value !== "string" || !/^[A-Za-z0-9_-]{16}$/.test(value)) {
+          return "Public ID must be a 16-character Base64URL value";
+        }
+        return true;
+      },
       admin: {
         readOnly: true,
         description:
@@ -123,7 +132,9 @@ export const Websites: CollectionConfig = {
         applyWebsiteBeforeChange({ req, operation, data, originalDoc }),
     ],
     // Drop the collect endpoint's resolution cache so domain/active changes
-    // take effect immediately instead of after the 5-minute TTL.
+    // take effect without waiting for the 5-minute TTL. Note: the cache is
+    // per-process, so in a multi-replica deployment this only clears the
+    // replica that handled the write (see lib/website-cache.ts).
     afterChange: [() => invalidateWebsiteCache()],
     afterDelete: [() => invalidateWebsiteCache()],
   },
