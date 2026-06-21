@@ -4,15 +4,11 @@ import { getPayload } from "payload";
 import type { Where } from "payload";
 import config from "@payload-config";
 import { processEvent } from "@/lib/ingestion/processor";
+import { getCachedWebsite, setCachedWebsite } from "@/lib/website-cache";
 
-// Cache valid website lookups for 5 minutes to avoid DB hits on every event.
-// Keyed by the value sent in the snippet (publicId or legacy numeric id);
-// resolves to the canonical numeric website id used for analytics + its domain.
-const websiteCache = new Map<
-  string,
-  { timestamp: number; id: string; domain: string }
->();
-const CACHE_TTL = 5 * 60 * 1000;
+// Valid website lookups are cached (in @/lib/website-cache) for 5 minutes to
+// avoid a DB hit on every event, and invalidated by the Websites collection
+// hooks when a site changes.
 
 // Token-bucket rate limiter (per IP). Best-effort, in-memory; for multi-replica
 // deployments put a real limiter (e.g. Redis) in front of this endpoint.
@@ -90,9 +86,9 @@ function getClientIp(request: NextRequest): string {
 async function resolveWebsite(
   websiteId: string,
 ): Promise<{ id: string; domain: string } | null> {
-  const cached = websiteCache.get(websiteId);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return { id: cached.id, domain: cached.domain };
+  const cached = getCachedWebsite(websiteId);
+  if (cached) {
+    return cached;
   }
 
   try {
@@ -112,7 +108,7 @@ async function resolveWebsite(
     if (result.docs.length > 0) {
       const doc = result.docs[0] as { id: string | number; domain: string };
       const resolved = { id: String(doc.id), domain: doc.domain };
-      websiteCache.set(websiteId, { timestamp: Date.now(), ...resolved });
+      setCachedWebsite(websiteId, resolved);
       return resolved;
     }
   } catch {

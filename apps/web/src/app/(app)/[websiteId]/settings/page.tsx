@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { resolveWebsite } from "@/lib/websites";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { WebsiteSettings } from "@/components/dashboard/website-settings";
 
 interface Props {
@@ -9,13 +9,8 @@ interface Props {
 export default async function WebsiteSettingsPage({ params }: Props) {
   const { websiteId: websiteParam } = await params;
 
-  const website = await resolveWebsite(websiteParam);
-  if (!website) notFound();
+  const access = await requireWebsitePageAccess(websiteParam, "/settings");
+  if (!access) notFound();
 
-  return (
-    <WebsiteSettings
-      websiteId={String(website.id)}
-      publicId={String(website.publicId ?? website.id)}
-    />
-  );
+  return <WebsiteSettings publicId={access.publicId} />;
 }

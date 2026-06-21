@@ -1,8 +1,5 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import { resolveWebsite } from "@/lib/websites";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { FunnelsPage } from "@/components/analytics/funnels-page";
 
 interface Props {
@@ -22,22 +19,15 @@ export default async function FunnelsRoute({ params, searchParams }: Props) {
   const { websiteId: websiteParam } = await params;
   const sp = await searchParams;
 
-  const payload = await getPayload({ config });
-  const hdrs = await headers();
-  const { user } = await payload.auth({ headers: hdrs });
-  if (!user) notFound();
-
-  const website = await resolveWebsite(websiteParam);
-  if (!website) notFound();
-  const websiteId = String(website.id);
-  const publicId = String(website.publicId ?? website.id);
+  const access = await requireWebsitePageAccess(websiteParam, "/funnels");
+  if (!access) notFound();
+  const { website, publicId } = access;
 
   const dateRange = getDateRange(sp);
 
   return (
     <FunnelsPage
       websiteId={publicId}
-      numericWebsiteId={websiteId}
       websiteName={website.name as string}
       dateRange={{
         from: dateRange.from.toISOString(),

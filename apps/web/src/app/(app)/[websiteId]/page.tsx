@@ -1,8 +1,5 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import { resolveWebsite } from "@/lib/websites";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { getAnalyticsRepository } from "@/lib/analytics";
 import { inferInterval } from "@/lib/utils/date";
 import { AnalyticsOverview } from "@/components/analytics/overview";
@@ -98,17 +95,12 @@ export default async function WebsiteAnalyticsPage({
   const { websiteId: websiteParam } = await params;
   const sp = await searchParams;
 
-  const payload = await getPayload({ config });
-  const hdrs = await headers();
-  const { user } = await payload.auth({ headers: hdrs });
-  if (!user) notFound();
-
-  // Resolve the public tracking id (or legacy numeric id) to the website.
-  const website = await resolveWebsite(websiteParam);
-  if (!website) notFound();
+  // Authenticate and authorize: resolves the public tracking id (or legacy
+  // numeric id) and verifies the user may access this website.
+  const access = await requireWebsitePageAccess(websiteParam);
+  if (!access) notFound();
   // Numeric id for analytics queries; public id for client-side links/APIs.
-  const websiteId = String(website.id);
-  const publicId = String(website.publicId ?? website.id);
+  const { website, numericId: websiteId, publicId } = access;
 
   const dateRange = getDateRange(sp);
   const previousDateRange = getPreviousPeriod(dateRange);

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { resolveWebsite } from "@/lib/websites";
+import { resolveWebsite, canAccessWebsite } from "@/lib/websites";
 
 type AuthSuccess = {
   user: { id: string; roles: string[] };
@@ -19,9 +19,7 @@ type AuthResult = AuthSuccess | AuthFailure;
  * id. On success returns the user plus the canonical numeric `websiteId` to use
  * for analytics queries; on failure returns a NextResponse to return directly.
  */
-export async function requireWebsiteAccess(
-  param: string,
-): Promise<AuthResult> {
+export async function requireWebsiteAccess(param: string): Promise<AuthResult> {
   const payload = await getPayload({ config });
   const hdrs = await headers();
   const { user } = await payload.auth({ headers: hdrs });
@@ -33,7 +31,6 @@ export async function requireWebsiteAccess(
   }
 
   const roles = (user as unknown as { roles?: string[] }).roles ?? [];
-  const isAdmin = roles.includes("admin");
 
   const website = await resolveWebsite(param);
   if (!website) {
@@ -42,7 +39,7 @@ export async function requireWebsiteAccess(
     };
   }
 
-  if (!isAdmin && String(website.createdBy) !== String(user.id)) {
+  if (!canAccessWebsite({ id: user.id, roles }, website)) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };

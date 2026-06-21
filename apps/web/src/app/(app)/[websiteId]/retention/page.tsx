@@ -1,8 +1,5 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import { resolveWebsite } from "@/lib/websites";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { RetentionPage } from "@/components/analytics/retention-page";
 
 interface Props {
@@ -22,14 +19,9 @@ export default async function RetentionRoute({ params, searchParams }: Props) {
   const { websiteId: websiteParam } = await params;
   const sp = await searchParams;
 
-  const payload = await getPayload({ config });
-  const hdrs = await headers();
-  const { user } = await payload.auth({ headers: hdrs });
-  if (!user) notFound();
-
-  const website = await resolveWebsite(websiteParam);
-  if (!website) notFound();
-  const publicId = String(website.publicId ?? website.id);
+  const access = await requireWebsitePageAccess(websiteParam, "/retention");
+  if (!access) notFound();
+  const { website, publicId } = access;
 
   const dateRange = getDateRange(sp);
 

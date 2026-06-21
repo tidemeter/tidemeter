@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import type { Payload } from "payload";
 import { hasAnalyticsData, seedAnalyticsData } from "@tidemeter/analytics";
+import { generatePublicId } from "@/payload/collections/websites";
 
 const DEMO_EMAIL = "demo@demo.com";
 const DEMO_PASSWORD = "demodemo";
@@ -435,6 +436,7 @@ export async function seedDemoData(payload: Payload): Promise<void> {
         timezone: "America/New_York",
         isActive: true,
         createdBy: demoUserId,
+        publicId: generatePublicId(),
       },
       overrideAccess: true,
     });

@@ -178,7 +178,7 @@ export interface Website {
   /**
    * Stable public identifier used in the tracking snippet (data-website-id).
    */
-  publicId?: string | null;
+  publicId: string;
   /**
    * Set to make dashboard publicly accessible via share link
    */

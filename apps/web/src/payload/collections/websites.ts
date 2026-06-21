@@ -1,14 +1,49 @@
 import type { CollectionConfig } from "payload";
 import { randomBytes } from "crypto";
+import { invalidateWebsiteCache } from "@/lib/website-cache";
 
 /**
  * Generate a stable, non-sequential public identifier for the tracking
  * snippet. Using a random id (instead of the Postgres serial row id) avoids
  * leaking how many websites exist or their creation order.
  */
-function generatePublicId(): string {
+export function generatePublicId(): string {
   // 12 random bytes -> 16 URL-safe chars ([A-Za-z0-9_-]), ~96 bits of entropy.
   return randomBytes(12).toString("base64url");
+}
+
+type WebsiteBeforeChangeArgs = {
+  req: { user?: { id: string | number } | null };
+  operation: "create" | "update";
+  data: Record<string, unknown>;
+  originalDoc?: { publicId?: string | null } | null;
+};
+
+/**
+ * `beforeChange` logic for the Websites collection, extracted for testing.
+ *
+ * - On create: set `createdBy` from the request user and generate a `publicId`.
+ * - On update: the `publicId` is immutable. Any client-supplied value (e.g. a
+ *   REST PATCH) is ignored and the stored id is preserved; a legacy row that
+ *   never received one is backfilled.
+ */
+export function applyWebsiteBeforeChange({
+  req,
+  operation,
+  data,
+  originalDoc,
+}: WebsiteBeforeChangeArgs): Record<string, unknown> {
+  if (operation === "create") {
+    if (req.user) {
+      data.createdBy = req.user.id;
+    }
+    if (!data.publicId) {
+      data.publicId = generatePublicId();
+    }
+  } else {
+    data.publicId = originalDoc?.publicId ?? generatePublicId();
+  }
+  return data;
 }
 
 export const Websites: CollectionConfig = {
@@ -48,6 +83,7 @@ export const Websites: CollectionConfig = {
     {
       name: "publicId",
       type: "text",
+      required: true,
       unique: true,
       index: true,
       label: "Public Tracking ID",
@@ -83,19 +119,13 @@ export const Websites: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ req, operation, data }) => {
-        // Auto-set createdBy on create
-        if (operation === "create" && req.user) {
-          data.createdBy = req.user.id;
-        }
-        // Generate a public tracking id on create (and backfill any legacy
-        // record that is missing one on its next write).
-        if (!data.publicId) {
-          data.publicId = generatePublicId();
-        }
-        return data;
-      },
+      ({ req, operation, data, originalDoc }) =>
+        applyWebsiteBeforeChange({ req, operation, data, originalDoc }),
     ],
+    // Drop the collect endpoint's resolution cache so domain/active changes
+    // take effect immediately instead of after the 5-minute TTL.
+    afterChange: [() => invalidateWebsiteCache()],
+    afterDelete: [() => invalidateWebsiteCache()],
   },
   access: {
     create: ({ req }) => !!req.user,
