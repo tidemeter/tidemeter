@@ -107,7 +107,7 @@ The dev server starts at **http://localhost:3700**.
 
 ## Adding the Tracker
 
-Add the tracking script to any website you want to monitor. The `data-website-id` comes from your TideMeter dashboard after adding a site.
+Add the tracking script to any website you want to monitor. The `data-website-id` is the auto-generated **public Website ID** shown under **Settings → Tracking Code** for the site (a short random identifier, not a sequential number).
 
 ```html
 <script
@@ -121,7 +121,7 @@ Add the tracking script to any website you want to monitor. The `data-website-id
 
 | Attribute          | Description                                   | Default       |
 | ------------------ | --------------------------------------------- | ------------- |
-| `data-website-id`  | **(required)** Website ID from your dashboard | —             |
+| `data-website-id`  | **(required)** Public Website ID from Settings → Tracking Code | —             |
 | `data-host-url`    | Override the analytics endpoint URL           | Script origin |
 | `data-auto-track`  | Auto-track pageviews                          | `true`        |
 | `data-respect-dnt` | Respect the Do-Not-Track header               | `true`        |

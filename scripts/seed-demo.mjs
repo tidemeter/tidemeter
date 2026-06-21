@@ -334,9 +334,13 @@ async function main() {
   const existing = await existingRes.json();
 
   let websiteId;
+  let publicId;
   if (existing.docs && existing.docs.length > 0) {
     websiteId = existing.docs[0].id;
-    console.log(`  ✓ Found existing demo website: ${websiteId}`);
+    publicId = existing.docs[0].publicId ?? existing.docs[0].id;
+    console.log(
+      `  ✓ Found existing demo website: ${websiteId} (id: ${publicId})`,
+    );
   } else {
     const createRes = await fetch(`${BASE_URL}/api/websites`, {
       method: "POST",
@@ -358,7 +362,8 @@ async function main() {
     }
     const created = await createRes.json();
     websiteId = created.doc.id;
-    console.log(`  ✓ Created demo website: ${websiteId}`);
+    publicId = created.doc.publicId ?? created.doc.id;
+    console.log(`  ✓ Created demo website: ${websiteId} (id: ${publicId})`);
   }
 
   // Step 4: Generate events and insert directly into PostgreSQL
@@ -951,9 +956,9 @@ async function main() {
   );
   console.log(`  The data covers the last ${DAYS_BACK} days.`);
   console.log(
-    `  Visit /<websiteId>/visitors to see user journeys for ${identityLinks.length} identified users.`,
+    `  Visit /${publicId}/visitors to see user journeys for ${identityLinks.length} identified users.`,
   );
-  console.log(`  Visit /<websiteId>/retention to see cohort retention grid.\n`);
+  console.log(`  Visit /${publicId}/retention to see cohort retention grid.\n`);
 }
 
 main().catch((err) => {

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { resolveWebsite } from "@/lib/websites";
 import { getAnalyticsRepository } from "@/lib/analytics";
 import { inferInterval } from "@/lib/utils/date";
 import { AnalyticsOverview } from "@/components/analytics/overview";
@@ -94,7 +95,7 @@ export default async function WebsiteAnalyticsPage({
   params,
   searchParams,
 }: Props) {
-  const { websiteId } = await params;
+  const { websiteId: websiteParam } = await params;
   const sp = await searchParams;
 
   const payload = await getPayload({ config });
@@ -102,16 +103,12 @@ export default async function WebsiteAnalyticsPage({
   const { user } = await payload.auth({ headers: hdrs });
   if (!user) notFound();
 
-  // Verify the website exists and belongs to user
-  const website = await payload
-    .findByID({
-      collection: "websites",
-      id: websiteId,
-      depth: 0,
-    })
-    .catch(() => null);
-
+  // Resolve the public tracking id (or legacy numeric id) to the website.
+  const website = await resolveWebsite(websiteParam);
   if (!website) notFound();
+  // Numeric id for analytics queries; public id for client-side links/APIs.
+  const websiteId = String(website.id);
+  const publicId = String(website.publicId ?? website.id);
 
   const dateRange = getDateRange(sp);
   const previousDateRange = getPreviousPeriod(dateRange);
@@ -146,7 +143,7 @@ export default async function WebsiteAnalyticsPage({
 
   return (
     <AnalyticsOverview
-      websiteId={websiteId}
+      websiteId={publicId}
       websiteName={website.name as string}
       dateRange={{
         from: dateRange.from.toISOString(),

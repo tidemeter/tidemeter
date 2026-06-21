@@ -423,7 +423,9 @@ export async function seedDemoData(payload: Payload): Promise<void> {
 
   if (existingWebsites.docs.length > 0) {
     websiteId = existingWebsites.docs[0].id;
-    console.log(`[seed-demo] Demo website already exists: ${websiteId}`);
+    console.log(
+      `[seed-demo] Demo website already exists: ${websiteId} (id: ${existingWebsites.docs[0].publicId ?? websiteId})`,
+    );
   } else {
     const created = await payload.create({
       collection: "websites",
@@ -437,7 +439,9 @@ export async function seedDemoData(payload: Payload): Promise<void> {
       overrideAccess: true,
     });
     websiteId = created.id;
-    console.log(`[seed-demo] Created demo website: ${websiteId}`);
+    console.log(
+      `[seed-demo] Created demo website: ${websiteId} (id: ${created.publicId ?? websiteId})`,
+    );
   }
 
   // --- Step 3: Insert analytics data directly via SQL ---

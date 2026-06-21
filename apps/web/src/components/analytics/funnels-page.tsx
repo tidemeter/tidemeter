@@ -23,6 +23,7 @@ interface FunnelDefinition {
 
 interface FunnelsPageProps {
   websiteId: string;
+  numericWebsiteId: string;
   websiteName: string;
   dateRange: { from: string; to: string };
 }
@@ -385,6 +386,7 @@ function FunnelDialog({
 
 export function FunnelsPage({
   websiteId,
+  numericWebsiteId,
   websiteName,
   dateRange,
 }: FunnelsPageProps) {
@@ -418,7 +420,7 @@ export function FunnelsPage({
   const loadFunnels = useCallback(async () => {
     try {
       const res = await fetch(
-        `/api/funnels?where[website][equals]=${websiteId}&limit=50`,
+        `/api/funnels?where[website][equals]=${numericWebsiteId}&limit=50`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -442,7 +444,7 @@ export function FunnelsPage({
     } catch {
       setFunnelsLoaded(true);
     }
-  }, [websiteId, selectedFunnelId]);
+  }, [numericWebsiteId, selectedFunnelId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch with loading state
@@ -688,7 +690,7 @@ export function FunnelsPage({
 
       {showCreate && (
         <FunnelDialog
-          websiteId={websiteId}
+          websiteId={numericWebsiteId}
           onSaved={() => {
             setShowCreate(false);
             loadFunnels();
@@ -703,7 +705,7 @@ export function FunnelsPage({
           const funnel = funnels.find((f) => f.id === selectedFunnelId);
           return funnel ? (
             <FunnelDialog
-              websiteId={websiteId}
+              websiteId={numericWebsiteId}
               editId={funnel.id}
               initialName={funnel.name}
               initialSteps={funnel.steps}

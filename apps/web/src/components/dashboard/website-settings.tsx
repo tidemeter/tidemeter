@@ -13,7 +13,10 @@ import {
 } from "@tidemeter/ui";
 
 interface WebsiteSettingsProps {
+  /** Canonical numeric id, used for Payload REST calls (GET/PATCH/DELETE). */
   websiteId: string;
+  /** Public tracking id, used in the snippet and dashboard URLs. */
+  publicId: string;
 }
 
 interface WebsiteData {
@@ -25,7 +28,7 @@ interface WebsiteData {
   shareId?: string | null;
 }
 
-export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
+export function WebsiteSettings({ websiteId, publicId }: WebsiteSettingsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState("");
@@ -64,7 +67,10 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
     load();
   }, [websiteId]);
 
-  const trackingSnippet = `<script defer data-website-id="${websiteId}" src="${typeof window !== "undefined" ? window.location.origin : ""}/t.js"></script>`;
+  // The public tracking id goes into the snippet and dashboard URLs; the
+  // numeric id is only used for authenticated REST calls.
+  const trackingId = publicId;
+  const trackingSnippet = `<script defer data-website-id="${trackingId}" src="${typeof window !== "undefined" ? window.location.origin : ""}/t.js"></script>`;
 
   function handleCopy() {
     navigator.clipboard.writeText(trackingSnippet);
@@ -149,7 +155,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href={`/${websiteId}`}
+          href={`/${publicId}`}
           className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
         >
           <svg

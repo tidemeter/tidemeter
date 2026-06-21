@@ -1,4 +1,15 @@
 import type { CollectionConfig } from "payload";
+import { randomBytes } from "crypto";
+
+/**
+ * Generate a stable, non-sequential public identifier for the tracking
+ * snippet. Using a random id (instead of the Postgres serial row id) avoids
+ * leaking how many websites exist or their creation order.
+ */
+function generatePublicId(): string {
+  // 12 random bytes -> 16 URL-safe chars ([A-Za-z0-9_-]), ~96 bits of entropy.
+  return randomBytes(12).toString("base64url");
+}
 
 export const Websites: CollectionConfig = {
   slug: "websites",
@@ -35,6 +46,18 @@ export const Websites: CollectionConfig = {
       admin: { description: "Enable or disable tracking for this website" },
     },
     {
+      name: "publicId",
+      type: "text",
+      unique: true,
+      index: true,
+      label: "Public Tracking ID",
+      admin: {
+        readOnly: true,
+        description:
+          "Stable public identifier used in the tracking snippet (data-website-id).",
+      },
+    },
+    {
       name: "shareId",
       type: "text",
       unique: true,
@@ -64,6 +87,11 @@ export const Websites: CollectionConfig = {
         // Auto-set createdBy on create
         if (operation === "create" && req.user) {
           data.createdBy = req.user.id;
+        }
+        // Generate a public tracking id on create (and backfill any legacy
+        // record that is missing one on its next write).
+        if (!data.publicId) {
+          data.publicId = generatePublicId();
         }
         return data;
       },

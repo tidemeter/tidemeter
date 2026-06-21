@@ -18,7 +18,7 @@ export default async function HomePage() {
     : { docs: [] };
 
   const websites = result.docs.map((doc) => ({
-    id: String(doc.id),
+    id: String(doc.publicId ?? doc.id),
     name: doc.name as string,
     domain: doc.domain as string,
     isActive: (doc.isActive as boolean) ?? true,
