@@ -13,7 +13,9 @@ import {
 } from "@tidemeter/ui";
 
 interface WebsiteSettingsProps {
-  websiteId: string;
+  /** Public tracking id, used in the snippet, dashboard URLs and the
+   *  publicId-keyed dashboard API (so the numeric id never reaches the browser). */
+  publicId: string;
 }
 
 interface WebsiteData {
@@ -25,7 +27,7 @@ interface WebsiteData {
   shareId?: string | null;
 }
 
-export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
+export function WebsiteSettings({ publicId }: WebsiteSettingsProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState("");
@@ -45,7 +47,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/websites/${websiteId}`, {
+        const res = await fetch(`/api/dashboard/websites/${publicId}`, {
           credentials: "include",
         });
         if (!res.ok) throw new Error(`Failed to load website (${res.status})`);
@@ -62,9 +64,12 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
       }
     }
     load();
-  }, [websiteId]);
+  }, [publicId]);
 
-  const trackingSnippet = `<script defer data-website-id="${websiteId}" src="${typeof window !== "undefined" ? window.location.origin : ""}/t.js"></script>`;
+  // The public tracking id goes into the snippet and dashboard URLs and keys
+  // the publicId-based dashboard API.
+  const trackingId = publicId;
+  const trackingSnippet = `<script defer data-website-id="${trackingId}" src="${typeof window !== "undefined" ? window.location.origin : ""}/t.js"></script>`;
 
   function handleCopy() {
     navigator.clipboard.writeText(trackingSnippet);
@@ -77,7 +82,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
     setMessage(null);
     setSaving(true);
     try {
-      const res = await fetch(`/api/websites/${websiteId}`, {
+      const res = await fetch(`/api/dashboard/websites/${publicId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -108,7 +113,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
     setDeleting(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/websites/${websiteId}`, {
+      const res = await fetch(`/api/dashboard/websites/${publicId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -149,7 +154,7 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href={`/${websiteId}`}
+          href={`/${publicId}`}
           className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
         >
           <svg
@@ -299,12 +304,15 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
                 onClick={async () => {
                   setTogglingShare(true);
                   try {
-                    const res = await fetch(`/api/websites/${websiteId}`, {
-                      method: "PATCH",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ shareId: null }),
-                    });
+                    const res = await fetch(
+                      `/api/dashboard/websites/${publicId}`,
+                      {
+                        method: "PATCH",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ shareId: null }),
+                      },
+                    );
                     if (res.ok) setShareId(null);
                   } finally {
                     setTogglingShare(false);
@@ -320,16 +328,25 @@ export function WebsiteSettings({ websiteId }: WebsiteSettingsProps) {
               onClick={async () => {
                 setTogglingShare(true);
                 try {
-                  const newShareId = crypto
-                    .randomUUID()
-                    .replace(/-/g, "")
-                    .slice(0, 12);
-                  const res = await fetch(`/api/websites/${websiteId}`, {
-                    method: "PATCH",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ shareId: newShareId }),
-                  });
+                  // Public share links are unguessable bearer tokens: anyone
+                  // with the link can read the dashboard. Use 24 random bytes
+                  // (192 bits) encoded as a 32-char URL-safe string — far more
+                  // entropy than the non-secret publicId tracking id.
+                  const bytes = new Uint8Array(24);
+                  crypto.getRandomValues(bytes);
+                  const newShareId = btoa(String.fromCharCode(...bytes))
+                    .replace(/\+/g, "-")
+                    .replace(/\//g, "_")
+                    .replace(/=+$/, "");
+                  const res = await fetch(
+                    `/api/dashboard/websites/${publicId}`,
+                    {
+                      method: "PATCH",
+                      credentials: "include",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ shareId: newShareId }),
+                    },
+                  );
                   if (res.ok) setShareId(newShareId);
                 } finally {
                   setTogglingShare(false);

@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { getAnalyticsRepository } from "@/lib/analytics";
 import { VisitorList } from "@/components/analytics/visitor-list";
 
@@ -25,18 +23,12 @@ function getDateRange(sp: { from?: string; to?: string }) {
 }
 
 export default async function VisitorsPage({ params, searchParams }: Props) {
-  const { websiteId } = await params;
+  const { websiteId: websiteParam } = await params;
   const sp = await searchParams;
 
-  const payload = await getPayload({ config });
-  const hdrs = await headers();
-  const { user } = await payload.auth({ headers: hdrs });
-  if (!user) notFound();
-
-  const website = await payload
-    .findByID({ collection: "websites", id: websiteId, depth: 0 })
-    .catch(() => null);
-  if (!website) notFound();
+  const access = await requireWebsitePageAccess(websiteParam, "/visitors");
+  if (!access) notFound();
+  const { website, numericId: websiteId, publicId } = access;
 
   const dateRange = getDateRange(sp);
   const page = Math.max(1, parseInt(sp.page || "1", 10));
@@ -57,7 +49,7 @@ export default async function VisitorsPage({ params, searchParams }: Props) {
 
   return (
     <VisitorList
-      websiteId={websiteId}
+      websiteId={publicId}
       websiteName={website.name as string}
       initialData={visitors}
       dateRange={{

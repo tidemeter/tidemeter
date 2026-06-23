@@ -50,7 +50,7 @@ export default async function AppLayout({
     : { docs: [] };
 
   const websites = websitesResult.docs.map((doc) => ({
-    id: String(doc.id),
+    id: String(doc.publicId ?? doc.id),
     name: doc.name as string,
     domain: doc.domain as string,
   }));

@@ -1,4 +1,51 @@
 import type { CollectionConfig } from "payload";
+import { randomBytes } from "crypto";
+import { invalidateWebsiteCache } from "@/lib/website-cache";
+
+/**
+ * Generate a stable, non-sequential public identifier for the tracking
+ * snippet. Using a random id (instead of the Postgres serial row id) avoids
+ * leaking how many websites exist or their creation order.
+ */
+export function generatePublicId(): string {
+  // 12 random bytes -> 16 URL-safe chars ([A-Za-z0-9_-]), ~96 bits of entropy.
+  return randomBytes(12).toString("base64url");
+}
+
+type WebsiteBeforeChangeArgs = {
+  req: { user?: { id: string | number } | null };
+  operation: "create" | "update";
+  data: Record<string, unknown>;
+  originalDoc?: { publicId?: string | null } | null;
+};
+
+/**
+ * `beforeChange` logic for the Websites collection, extracted for testing.
+ *
+ * - On create: set `createdBy` from the request user and always generate the
+ *   `publicId` server-side. Any client-supplied value is ignored so callers
+ *   cannot choose malformed, short, or all-numeric ids that could collide with
+ *   a legacy numeric route.
+ * - On update: the `publicId` is immutable. Any client-supplied value (e.g. a
+ *   REST PATCH) is ignored and the stored id is preserved; a legacy row that
+ *   never received one is backfilled.
+ */
+export function applyWebsiteBeforeChange({
+  req,
+  operation,
+  data,
+  originalDoc,
+}: WebsiteBeforeChangeArgs): Record<string, unknown> {
+  if (operation === "create") {
+    if (req.user) {
+      data.createdBy = req.user.id;
+    }
+    data.publicId = generatePublicId();
+  } else {
+    data.publicId = originalDoc?.publicId ?? generatePublicId();
+  }
+  return data;
+}
 
 export const Websites: CollectionConfig = {
   slug: "websites",
@@ -35,6 +82,27 @@ export const Websites: CollectionConfig = {
       admin: { description: "Enable or disable tracking for this website" },
     },
     {
+      name: "publicId",
+      type: "text",
+      required: true,
+      unique: true,
+      index: true,
+      label: "Public Tracking ID",
+      // Defense in depth: even though the value is always generated in
+      // beforeChange, reject anything that is not a 16-char Base64URL string.
+      validate: (value: string | string[] | null | undefined) => {
+        if (typeof value !== "string" || !/^[A-Za-z0-9_-]{16}$/.test(value)) {
+          return "Public ID must be a 16-character Base64URL value";
+        }
+        return true;
+      },
+      admin: {
+        readOnly: true,
+        description:
+          "Stable public identifier used in the tracking snippet (data-website-id).",
+      },
+    },
+    {
       name: "shareId",
       type: "text",
       unique: true,
@@ -60,14 +128,15 @@ export const Websites: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ req, operation, data }) => {
-        // Auto-set createdBy on create
-        if (operation === "create" && req.user) {
-          data.createdBy = req.user.id;
-        }
-        return data;
-      },
+      ({ req, operation, data, originalDoc }) =>
+        applyWebsiteBeforeChange({ req, operation, data, originalDoc }),
     ],
+    // Drop the collect endpoint's resolution cache so domain/active changes
+    // take effect without waiting for the 5-minute TTL. Note: the cache is
+    // per-process, so in a multi-replica deployment this only clears the
+    // replica that handled the write (see lib/website-cache.ts).
+    afterChange: [() => invalidateWebsiteCache()],
+    afterDelete: [() => invalidateWebsiteCache()],
   },
   access: {
     create: ({ req }) => !!req.user,

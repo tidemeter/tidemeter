@@ -3,10 +3,11 @@ import { z } from "zod";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { processEvent } from "@/lib/ingestion/processor";
+import { getCachedWebsite, setCachedWebsite } from "@/lib/website-cache";
 
-// Cache valid website IDs and domains for 5 minutes to avoid DB lookups on every event
-const websiteCache = new Map<string, { timestamp: number; domain: string }>();
-const CACHE_TTL = 5 * 60 * 1000;
+// Valid website lookups are cached (in @/lib/website-cache) for 5 minutes to
+// avoid a DB hit on every event, and invalidated by the Websites collection
+// hooks when a site changes.
 
 // Token-bucket rate limiter (per IP). Best-effort, in-memory; for multi-replica
 // deployments put a real limiter (e.g. Redis) in front of this endpoint.
@@ -74,22 +75,56 @@ function getClientIp(request: NextRequest): string {
   return realIp || "127.0.0.1";
 }
 
-async function getWebsiteDomain(websiteId: string): Promise<string | null> {
-  const cached = websiteCache.get(websiteId);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return cached.domain;
+/**
+ * Resolve the snippet's website identifier (public tracking id, or a legacy
+ * numeric row id) to the canonical numeric website id and its domain. Returns
+ * null when no active website matches. Analytics are always keyed by the
+ * canonical numeric id so the dashboard and existing data keep working
+ * regardless of which identifier the snippet embeds.
+ */
+async function resolveWebsite(
+  websiteId: string,
+): Promise<{ id: string; domain: string } | null> {
+  const cached = getCachedWebsite(websiteId);
+  if (cached) {
+    return cached;
+  }
 
   try {
     const payload = await getPayload({ config });
-    const result = await payload.find({
+    // Resolve by public id first so a public id always wins; only fall back to
+    // the legacy numeric row id when no active website matches, so snippets
+    // generated before publicId existed keep working without any ambiguity.
+    let doc: { id: string | number; domain: string } | undefined;
+    const byPublicId = await payload.find({
       collection: "websites",
-      where: { id: { equals: websiteId }, isActive: { equals: true } },
+      where: {
+        and: [
+          { isActive: { equals: true } },
+          { publicId: { equals: websiteId } },
+        ],
+      },
       limit: 1,
       depth: 0,
     });
-    if (result.docs.length > 0) {
-      const domain = (result.docs[0] as { domain: string }).domain;
-      websiteCache.set(websiteId, { timestamp: Date.now(), domain });
-      return domain;
+    doc = byPublicId.docs[0] as
+      | { id: string | number; domain: string }
+      | undefined;
+    if (!doc && /^\d+$/.test(websiteId)) {
+      const byId = await payload.find({
+        collection: "websites",
+        where: {
+          and: [{ isActive: { equals: true } }, { id: { equals: websiteId } }],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      doc = byId.docs[0] as { id: string | number; domain: string } | undefined;
+    }
+    if (doc) {
+      const resolved = { id: String(doc.id), domain: doc.domain };
+      setCachedWebsite(websiteId, resolved);
+      return resolved;
     }
   } catch {
     // If DB is unavailable, reject — fail closed
@@ -114,7 +149,13 @@ const customDataSchema = z
   );
 
 const collectSchema = z.object({
-  websiteId: z.union([z.string().uuid(), z.coerce.string().regex(/^\d+$/)]),
+  websiteId: z
+    .string()
+    .min(1)
+    .max(64)
+    // Accepts the generated public id (URL-safe base64), legacy numeric row
+    // ids, and UUIDs — all of which are within [A-Za-z0-9_-].
+    .regex(/^[A-Za-z0-9_-]+$/),
   url: z.string().max(2048),
   referrer: z.string().max(2048).default(""),
   title: z.string().max(512).default(""),
@@ -166,9 +207,10 @@ export async function POST(request: NextRequest) {
     }
     const payload = collectSchema.parse(body);
 
-    // Validate the website exists and is active
-    const websiteDomain = await getWebsiteDomain(payload.websiteId);
-    if (!websiteDomain) {
+    // Validate the website exists and is active, and resolve to the canonical
+    // numeric id that analytics are keyed by.
+    const website = await resolveWebsite(payload.websiteId);
+    if (!website) {
       return NextResponse.json(
         { error: "Invalid website" },
         { status: 403, headers },
@@ -194,8 +236,8 @@ export async function POST(request: NextRequest) {
       );
     }
     if (
-      originHost !== websiteDomain &&
-      !originHost.endsWith(`.${websiteDomain}`)
+      originHost !== website.domain &&
+      !originHost.endsWith(`.${website.domain}`)
     ) {
       return NextResponse.json(
         { error: "Origin mismatch" },
@@ -208,6 +250,8 @@ export async function POST(request: NextRequest) {
     try {
       await processEvent({
         ...payload,
+        // Always key analytics by the canonical numeric id, never the public id.
+        websiteId: website.id,
         ip,
         userAgent,
       });

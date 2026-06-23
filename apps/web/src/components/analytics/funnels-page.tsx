@@ -141,7 +141,7 @@ interface FunnelStep {
 }
 
 interface FunnelDialogProps {
-  websiteId: string;
+  publicId: string;
   editId?: string | null;
   initialName?: string;
   initialSteps?: FunnelStep[];
@@ -150,7 +150,7 @@ interface FunnelDialogProps {
 }
 
 function FunnelDialog({
-  websiteId,
+  publicId,
   editId,
   initialName = "",
   initialSteps,
@@ -219,10 +219,13 @@ function FunnelDialog({
     setError("");
 
     try {
-      const url = isEdit ? `/api/funnels/${editId}` : "/api/funnels";
+      // Edits go to the access-controlled funnel-by-id endpoint; creation goes
+      // through the publicId-keyed proxy so the numeric website id never leaks.
+      const url = isEdit
+        ? `/api/funnels/${editId}`
+        : `/api/dashboard/websites/${publicId}/funnels`;
       const method = isEdit ? "PATCH" : "POST";
       const body: Record<string, unknown> = { name, steps };
-      if (!isEdit) body.website = websiteId;
 
       const res = await fetch(url, {
         method,
@@ -417,9 +420,7 @@ export function FunnelsPage({
   // Fetch funnel definitions
   const loadFunnels = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/funnels?where[website][equals]=${websiteId}&limit=50`,
-      );
+      const res = await fetch(`/api/dashboard/websites/${websiteId}/funnels`);
       if (!res.ok) return;
       const data = await res.json();
       const docs = (data.docs ?? []).map(
@@ -688,7 +689,7 @@ export function FunnelsPage({
 
       {showCreate && (
         <FunnelDialog
-          websiteId={websiteId}
+          publicId={websiteId}
           onSaved={() => {
             setShowCreate(false);
             loadFunnels();
@@ -703,7 +704,7 @@ export function FunnelsPage({
           const funnel = funnels.find((f) => f.id === selectedFunnelId);
           return funnel ? (
             <FunnelDialog
-              websiteId={websiteId}
+              publicId={websiteId}
               editId={funnel.id}
               initialName={funnel.name}
               initialSteps={funnel.steps}

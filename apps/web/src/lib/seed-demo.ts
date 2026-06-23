@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import type { Payload } from "payload";
 import { hasAnalyticsData, seedAnalyticsData } from "@tidemeter/analytics";
+import { generatePublicId } from "@/payload/collections/websites";
 
 const DEMO_EMAIL = "demo@demo.com";
 const DEMO_PASSWORD = "demodemo";
@@ -423,7 +424,9 @@ export async function seedDemoData(payload: Payload): Promise<void> {
 
   if (existingWebsites.docs.length > 0) {
     websiteId = existingWebsites.docs[0].id;
-    console.log(`[seed-demo] Demo website already exists: ${websiteId}`);
+    console.log(
+      `[seed-demo] Demo website already exists: ${websiteId} (id: ${existingWebsites.docs[0].publicId ?? websiteId})`,
+    );
   } else {
     const created = await payload.create({
       collection: "websites",
@@ -433,11 +436,14 @@ export async function seedDemoData(payload: Payload): Promise<void> {
         timezone: "America/New_York",
         isActive: true,
         createdBy: demoUserId,
+        publicId: generatePublicId(),
       },
       overrideAccess: true,
     });
     websiteId = created.id;
-    console.log(`[seed-demo] Created demo website: ${websiteId}`);
+    console.log(
+      `[seed-demo] Created demo website: ${websiteId} (id: ${created.publicId ?? websiteId})`,
+    );
   }
 
   // --- Step 3: Insert analytics data directly via SQL ---

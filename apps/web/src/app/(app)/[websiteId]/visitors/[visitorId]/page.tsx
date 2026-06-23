@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { requireWebsitePageAccess } from "@/lib/websites";
 import { getAnalyticsRepository } from "@/lib/analytics";
 import { VisitorProfile } from "@/components/analytics/visitor-profile";
 
@@ -22,18 +20,15 @@ export default async function VisitorProfilePage({
   params,
   searchParams,
 }: Props) {
-  const { websiteId, visitorId } = await params;
+  const { websiteId: websiteParam, visitorId } = await params;
   const sp = await searchParams;
 
-  const payload = await getPayload({ config });
-  const hdrs = await headers();
-  const { user } = await payload.auth({ headers: hdrs });
-  if (!user) notFound();
-
-  const website = await payload
-    .findByID({ collection: "websites", id: websiteId, depth: 0 })
-    .catch(() => null);
-  if (!website) notFound();
+  const access = await requireWebsitePageAccess(
+    websiteParam,
+    `/visitors/${visitorId}`,
+  );
+  if (!access) notFound();
+  const { website, numericId: websiteId, publicId } = access;
 
   const dateRange = getDateRange(sp);
   const repo = await getAnalyticsRepository();
@@ -43,7 +38,7 @@ export default async function VisitorProfilePage({
 
   return (
     <VisitorProfile
-      websiteId={websiteId}
+      websiteId={publicId}
       websiteName={website.name as string}
       profile={profile}
     />

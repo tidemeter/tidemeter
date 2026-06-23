@@ -15,10 +15,12 @@ const VALID_GRANULARITIES = new Set<CohortGranularity>([
 ]);
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { websiteId } = await params;
+  const { websiteId: websiteParam } = await params;
 
-  const auth = await requireWebsiteAccess(websiteId);
+  const auth = await requireWebsiteAccess(websiteParam);
   if ("error" in auth) return auth.error;
+  // Resolve to the canonical numeric id that analytics data is keyed by.
+  const websiteId = auth.websiteId;
 
   const searchParams = request.nextUrl.searchParams;
   const dateRange = parseDateRange(searchParams);

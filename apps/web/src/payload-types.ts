@@ -176,6 +176,10 @@ export interface Website {
    */
   isActive?: boolean | null;
   /**
+   * Stable public identifier used in the tracking snippet (data-website-id).
+   */
+  publicId: string;
+  /**
    * Set to make dashboard publicly accessible via share link
    */
   shareId?: string | null;
@@ -390,6 +394,7 @@ export interface WebsitesSelect<T extends boolean = true> {
   domain?: T;
   timezone?: T;
   isActive?: T;
+  publicId?: T;
   shareId?: T;
   createdBy?: T;
   team?: T;
