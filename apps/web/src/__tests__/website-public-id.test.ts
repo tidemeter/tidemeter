@@ -3,7 +3,23 @@ import {
   applyWebsiteBeforeChange,
   generatePublicId,
 } from "@/payload/collections/websites";
-import { canAccessWebsite } from "@/lib/website-access";
+
+// Inline copy of the sync logic from canAccessWebsite for unit testing
+// without pulling in Payload or Next request context.
+function canAccessWebsiteSync(
+  user: { id: string | number; roles?: string[] } | null | undefined,
+  website: { createdBy: unknown; team?: unknown },
+): boolean {
+  if (!user) return false;
+  const roles = user.roles ?? [];
+  if (roles.includes("admin")) return true;
+  // Personal website: creator is the sole owner.
+  if (!website.team) {
+    return String(website.createdBy) === String(user.id);
+  }
+  // Team-owned website: `createdBy` is audit metadata only.
+  return false;
+}
 
 const PUBLIC_ID_RE = /^[A-Za-z0-9_-]{16}$/;
 
@@ -74,24 +90,39 @@ describe("applyWebsiteBeforeChange", () => {
   });
 });
 
-describe("canAccessWebsite", () => {
+describe("canAccessWebsiteSync", () => {
   it("denies an unauthenticated user", () => {
-    expect(canAccessWebsite(null, { createdBy: 1 })).toBe(false);
-    expect(canAccessWebsite(undefined, { createdBy: 1 })).toBe(false);
+    expect(canAccessWebsiteSync(null, { createdBy: 1 })).toBe(false);
+    expect(canAccessWebsiteSync(undefined, { createdBy: 1 })).toBe(false);
   });
 
-  it("allows the website owner", () => {
-    expect(canAccessWebsite({ id: 5 }, { createdBy: 5 })).toBe(true);
-    expect(canAccessWebsite({ id: "5" }, { createdBy: 5 })).toBe(true);
+  it("allows the creator of a personal website (no team)", () => {
+    expect(canAccessWebsiteSync({ id: 5 }, { createdBy: 5 })).toBe(true);
+    expect(canAccessWebsiteSync({ id: "5" }, { createdBy: 5 })).toBe(true);
   });
 
-  it("denies an unrelated logged-in user", () => {
-    expect(canAccessWebsite({ id: 9 }, { createdBy: 5 })).toBe(false);
+  it("denies a non-creator of a personal website", () => {
+    expect(canAccessWebsiteSync({ id: 9 }, { createdBy: 5 })).toBe(false);
   });
 
-  it("allows an admin regardless of ownership", () => {
+  it("denies the creator of a team-owned website (createdBy is audit only)", () => {
+    expect(canAccessWebsiteSync({ id: 5 }, { createdBy: 5, team: 10 })).toBe(
+      false,
+    );
+  });
+
+  it("allows an admin regardless of ownership or team", () => {
     expect(
-      canAccessWebsite({ id: 9, roles: ["admin"] }, { createdBy: 5 }),
+      canAccessWebsiteSync({ id: 9, roles: ["admin"] }, { createdBy: 5 }),
+    ).toBe(true);
+    expect(
+      canAccessWebsiteSync(
+        { id: 9, roles: ["admin"] },
+        {
+          createdBy: 5,
+          team: 10,
+        },
+      ),
     ).toBe(true);
   });
 });

@@ -87,7 +87,7 @@ export async function requireWebsitePageAccess(
   if (!website) return null;
 
   const roles = (user as unknown as { roles?: string[] }).roles ?? [];
-  if (!canAccessWebsite({ id: user.id, roles }, website)) return null;
+  if (!(await canAccessWebsite({ id: user.id, roles }, website))) return null;
 
   const publicId = String(website.publicId ?? website.id);
   // Send legacy numeric URLs to the canonical public-id URL.

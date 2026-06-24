@@ -39,7 +39,7 @@ export async function requireWebsiteAccess(param: string): Promise<AuthResult> {
     };
   }
 
-  if (!canAccessWebsite({ id: user.id, roles }, website)) {
+  if (!(await canAccessWebsite({ id: user.id, roles }, website))) {
     return {
       error: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
     };
