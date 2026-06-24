@@ -283,8 +283,14 @@ export const Websites: CollectionConfig = {
           originalDoc,
         });
 
-        // Async logic: validate team transfers.
-        if (operation === "update") {
+        // Async logic: validate team transfers only when the caller
+        // actually submitted the `team` field. Payload omits unchanged
+        // fields from `data`, so `data.team === undefined` means "no
+        // change to team" — not "clear the team".
+        if (
+          operation === "update" &&
+          Object.prototype.hasOwnProperty.call(data, "team")
+        ) {
           await validateTeamChange(
             req,
             req.payload as {
