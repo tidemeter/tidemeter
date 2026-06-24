@@ -20,6 +20,115 @@ type WebsiteBeforeChangeArgs = {
 };
 
 /**
+ * Extract the scalar id from a Payload relationship value
+ * (can be a number, string, or populated object with `.id`).
+ */
+function getRelationId(val: unknown): string | null {
+  if (val == null) return null;
+  if (typeof val === "object") return String((val as { id: unknown }).id);
+  return String(val);
+}
+
+/**
+ * Validate that the user is authorized to change the `team` field.
+ * Called from the `beforeChange` hook (not from `applyWebsiteBeforeChange`)
+ * so it has access to the Payload client.
+ *
+ * Rules:
+ * - Global admin: unrestricted.
+ * - Personal → team: actor must be owner/admin of the destination team.
+ * - Team A → Team B: actor must be owner of A AND owner/admin of B.
+ * - Team → null (clear): actor must be owner of the current team.
+ */
+async function validateTeamChange(
+  req: { user?: { id: string | number; roles?: string[] } | null },
+  payload: {
+    find: (args: {
+      collection: string;
+      where: unknown;
+      limit: number;
+      depth: number;
+    }) => Promise<{ totalDocs: number }>;
+  },
+  dataTeam: unknown,
+  originalTeam: unknown,
+): Promise<void> {
+  const currentTeamId = getRelationId(originalTeam);
+  const nextTeamId = getRelationId(dataTeam);
+
+  // No change.
+  if (currentTeamId === nextTeamId) return;
+
+  const roles = (req.user as { roles?: string[] } | undefined)?.roles ?? [];
+  if (roles.includes("admin")) return; // Global admin: unrestricted.
+  if (!req.user) throw new Error("Unauthorized");
+
+  // Personal → team: require owner/admin of destination.
+  if (!currentTeamId) {
+    if (nextTeamId) {
+      const result = await payload.find({
+        collection: "team-members",
+        where: {
+          and: [
+            { team: { equals: nextTeamId } },
+            { user: { equals: req.user.id } },
+            { role: { in: ["owner", "admin"] } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      if (result.totalDocs === 0) {
+        throw new Error(
+          "You must be an owner or admin of the destination team.",
+        );
+      }
+    }
+    return;
+  }
+
+  // Team → anything: require owner of current team.
+  {
+    const result = await payload.find({
+      collection: "team-members",
+      where: {
+        and: [
+          { team: { equals: currentTeamId } },
+          { user: { equals: req.user.id } },
+          { role: { equals: "owner" } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    });
+    if (result.totalDocs === 0) {
+      throw new Error(
+        "Only an owner of the current team can transfer a website.",
+      );
+    }
+  }
+
+  // Team → team: also require owner/admin of destination.
+  if (nextTeamId) {
+    const result = await payload.find({
+      collection: "team-members",
+      where: {
+        and: [
+          { team: { equals: nextTeamId } },
+          { user: { equals: req.user.id } },
+          { role: { in: ["owner", "admin"] } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    });
+    if (result.totalDocs === 0) {
+      throw new Error("You must be an owner or admin of the destination team.");
+    }
+  }
+}
+
+/**
  * `beforeChange` logic for the Websites collection, extracted for testing.
  *
  * - On create: set `createdBy` from the request user and always generate the
@@ -29,6 +138,9 @@ type WebsiteBeforeChangeArgs = {
  * - On update: the `publicId` is immutable. Any client-supplied value (e.g. a
  *   REST PATCH) is ignored and the stored id is preserved; a legacy row that
  *   never received one is backfilled.
+ *
+ * NOTE: Team transfer validation is handled by `validateTeamChange` in the
+ * hook below (not here), so this function stays sync and testable.
  */
 export function applyWebsiteBeforeChange({
   req,
@@ -162,8 +274,33 @@ export const Websites: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      ({ req, operation, data, originalDoc }) =>
-        applyWebsiteBeforeChange({ req, operation, data, originalDoc }),
+      async ({ req, operation, data, originalDoc }) => {
+        // Sync logic: createdBy, publicId.
+        const result = applyWebsiteBeforeChange({
+          req,
+          operation,
+          data,
+          originalDoc,
+        });
+
+        // Async logic: validate team transfers.
+        if (operation === "update") {
+          await validateTeamChange(
+            req,
+            req.payload as {
+              find: (args: {
+                collection: string;
+                where: unknown;
+                limit: number;
+                depth: number;
+              }) => Promise<{ totalDocs: number }>;
+            },
+            data.team,
+            originalDoc?.team,
+          );
+        }
+        return result;
+      },
     ],
     // Drop the collect endpoint's resolution cache so domain/active changes
     // take effect without waiting for the 5-minute TTL. Note: the cache is
@@ -203,10 +340,11 @@ export const Websites: CollectionConfig = {
       if (!req.user) return false;
 
       // Find teams this user is a member of (any role: owner, admin, viewer).
+      // Use a high limit to handle users in many teams (1000 is a safe cap).
       const memberships = await req.payload.find({
         collection: "team-members",
         where: { user: { equals: req.user.id } },
-        limit: 100,
+        limit: 1000,
         depth: 0,
       });
 
@@ -241,6 +379,7 @@ export const Websites: CollectionConfig = {
       if (!req.user) return false;
 
       // Find teams where this user is an owner or admin.
+      // Use a high limit to handle users in many teams.
       const memberships = await req.payload.find({
         collection: "team-members",
         where: {
@@ -249,7 +388,7 @@ export const Websites: CollectionConfig = {
             { role: { in: ["owner", "admin"] } },
           ],
         },
-        limit: 100,
+        limit: 1000,
         depth: 0,
       });
 
@@ -284,6 +423,7 @@ export const Websites: CollectionConfig = {
       if (!req.user) return false;
 
       // Find teams where this user is an owner.
+      // Use a high limit to handle users in many teams.
       const memberships = await req.payload.find({
         collection: "team-members",
         where: {
@@ -292,7 +432,7 @@ export const Websites: CollectionConfig = {
             { role: { equals: "owner" } },
           ],
         },
-        limit: 100,
+        limit: 1000,
         depth: 0,
       });
 
