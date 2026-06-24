@@ -2,6 +2,16 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 
 /**
+ * Extract the scalar id from a Payload relationship value
+ * (can be a number, string, or populated object with `.id`).
+ */
+function getRelationId(val: unknown): string | null {
+  if (val == null) return null;
+  if (typeof val === "object") return String((val as { id: unknown }).id);
+  return String(val);
+}
+
+/**
  * Authorization predicate for website access.
  *
  * Uses two ownership modes:
@@ -23,7 +33,8 @@ export async function canAccessWebsite(
   if (roles.includes("admin")) return true;
 
   // Personal website: creator is the sole owner.
-  if (!website.team) {
+  const teamId = getRelationId(website.team);
+  if (!teamId) {
     return String(website.createdBy) === String(user.id);
   }
 
@@ -33,10 +44,7 @@ export async function canAccessWebsite(
     const memberships = await payload.find({
       collection: "team-members",
       where: {
-        and: [
-          { team: { equals: website.team } },
-          { user: { equals: user.id } },
-        ],
+        and: [{ team: { equals: teamId } }, { user: { equals: user.id } }],
       },
       limit: 1,
       depth: 0,
