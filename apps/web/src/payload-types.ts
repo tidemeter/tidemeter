@@ -185,7 +185,7 @@ export interface Website {
   shareId?: string | null;
   createdBy: number | User;
   /**
-   * Optional team that owns this website
+   * Optional team that owns this website. Once set, the team—not the creator—controls access to this website.
    */
   team?: (number | null) | Team;
   updatedAt: string;

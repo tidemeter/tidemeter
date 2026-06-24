@@ -1,4 +1,4 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, Where } from "payload";
 import { randomBytes } from "crypto";
 import { invalidateWebsiteCache } from "@/lib/website-cache";
 
@@ -123,7 +123,41 @@ export const Websites: CollectionConfig = {
       type: "relationship",
       relationTo: "teams",
       label: "Team",
-      admin: { description: "Optional team that owns this website" },
+      admin: {
+        description:
+          "Optional team that owns this website. Once set, the team—not the " +
+          "creator—controls access to this website.",
+      },
+      // Protect the team field: only global admins or team owners can change it.
+      // This prevents a team admin or viewer from transferring the website to
+      // another team or clearing the team assignment.
+      access: {
+        update: async ({ req, doc }) => {
+          const roles = req.user?.roles;
+          if (Array.isArray(roles) && roles.includes("admin")) return true;
+          if (!req.user || !doc) return false;
+
+          // If the website has no team yet, the creator can assign it.
+          if (!doc.team) {
+            return String(doc.createdBy) === String(req.user.id);
+          }
+
+          // Team-owned website: only a team owner can change the team field.
+          const memberships = await req.payload.find({
+            collection: "team-members",
+            where: {
+              and: [
+                { team: { equals: doc.team } },
+                { user: { equals: req.user.id } },
+                { role: { equals: "owner" } },
+              ],
+            },
+            limit: 1,
+            depth: 0,
+          });
+          return memberships.totalDocs > 0;
+        },
+      },
     },
   ],
   hooks: {
@@ -139,31 +173,153 @@ export const Websites: CollectionConfig = {
     afterDelete: [() => invalidateWebsiteCache()],
   },
   access: {
-    create: ({ req }) => !!req.user,
-    read: ({ req }) => {
+    create: async ({ req, data }) => {
+      if (!req.user) return false;
+      const roles = req.user.roles;
+      if (Array.isArray(roles) && roles.includes("admin")) return true;
+
+      // If creating a personal website (no team), any authenticated user can.
+      if (!data?.team) return true;
+
+      // If creating a team-owned website, verify the user is an owner or admin
+      // of that team. A viewer or non-member cannot create sites in a team.
+      const memberships = await req.payload.find({
+        collection: "team-members",
+        where: {
+          and: [
+            { team: { equals: data.team } },
+            { user: { equals: req.user.id } },
+            { role: { in: ["owner", "admin"] } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      return memberships.totalDocs > 0;
+    },
+    read: async ({ req }): Promise<boolean | Where> => {
       const roles = req.user?.roles;
       if (Array.isArray(roles) && roles.includes("admin")) return true;
-      if (req.user) {
+      if (!req.user) return false;
+
+      // Find teams this user is a member of (any role: owner, admin, viewer).
+      const memberships = await req.payload.find({
+        collection: "team-members",
+        where: { user: { equals: req.user.id } },
+        limit: 100,
+        depth: 0,
+      });
+
+      const teamIds = memberships.docs.map((m) =>
+        typeof m.team === "object" ? m.team.id : m.team,
+      );
+
+      // Two-mode ownership:
+      // - Personal site (team is null): only creator can read.
+      // - Team site (team is set): any team member can read.
+      if (teamIds.length === 0) {
         return {
-          or: [
+          and: [
             { createdBy: { equals: req.user.id } },
-            // Team-based access is handled via team members
+            { team: { equals: null } },
           ],
         };
       }
-      return false;
+
+      return {
+        or: [
+          // Personal site: creator
+          { createdBy: { equals: req.user.id }, team: { equals: null } },
+          // Team site: any team member
+          { team: { in: teamIds } },
+        ],
+      };
     },
-    update: ({ req }) => {
+    update: async ({ req }): Promise<boolean | Where> => {
       const roles = req.user?.roles;
       if (Array.isArray(roles) && roles.includes("admin")) return true;
-      if (req.user) return { createdBy: { equals: req.user.id } };
-      return false;
+      if (!req.user) return false;
+
+      // Find teams where this user is an owner or admin.
+      const memberships = await req.payload.find({
+        collection: "team-members",
+        where: {
+          and: [
+            { user: { equals: req.user.id } },
+            { role: { in: ["owner", "admin"] } },
+          ],
+        },
+        limit: 100,
+        depth: 0,
+      });
+
+      const teamIds = memberships.docs.map((m) =>
+        typeof m.team === "object" ? m.team.id : m.team,
+      );
+
+      // Two-mode ownership:
+      // - Personal site (team is null): only creator can update.
+      // - Team site (team is set): team owner/admin can update.
+      if (teamIds.length === 0) {
+        return {
+          and: [
+            { createdBy: { equals: req.user.id } },
+            { team: { equals: null } },
+          ],
+        };
+      }
+
+      return {
+        or: [
+          // Personal site: creator
+          { createdBy: { equals: req.user.id }, team: { equals: null } },
+          // Team site: team owner/admin
+          { team: { in: teamIds } },
+        ],
+      };
     },
-    delete: ({ req }) => {
+    delete: async ({ req }): Promise<boolean | Where> => {
       const roles = req.user?.roles;
       if (Array.isArray(roles) && roles.includes("admin")) return true;
-      if (req.user) return { createdBy: { equals: req.user.id } };
-      return false;
+      if (!req.user) return false;
+
+      // Find teams where this user is an owner.
+      const memberships = await req.payload.find({
+        collection: "team-members",
+        where: {
+          and: [
+            { user: { equals: req.user.id } },
+            { role: { equals: "owner" } },
+          ],
+        },
+        limit: 100,
+        depth: 0,
+      });
+
+      const teamIds = memberships.docs.map((m) =>
+        typeof m.team === "object" ? m.team.id : m.team,
+      );
+
+      // Two-mode ownership:
+      // - Personal site (team is null): only creator can delete.
+      // - Team site (team is set): team owner can delete.
+      if (teamIds.length === 0) {
+        return {
+          and: [
+            { createdBy: { equals: req.user.id } },
+            { team: { equals: null } },
+          ],
+        };
+      }
+
+      return {
+        or: [
+          // Personal site: creator
+          { createdBy: { equals: req.user.id }, team: { equals: null } },
+          // Team site: team owner
+          { team: { in: teamIds } },
+        ],
+      };
     },
   },
 };
