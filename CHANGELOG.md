@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.16](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.15...tidemeter-v0.1.16) (2026-06-23)
+
+
+### Features
+
+* use public IDs for tracking and dashboard routes ([4cde487](https://github.com/tidemeter/tidemeter/commit/4cde4879530670a08c05dbb8f983dad6bacd444a))
+
+
+### Bug Fixes
+
+* generate public IDs server-side ([ccbf247](https://github.com/tidemeter/tidemeter/commit/ccbf24765a26b119ac8d002faf79a36ec8db4db2))
+* improve use public IDs for tracking and dashboard routes ([130863b](https://github.com/tidemeter/tidemeter/commit/130863b433c9941738f8aa4e9dc80533ebb2e6f7))
+
 ## [0.1.15](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.14...tidemeter-v0.1.15) (2026-06-20)
 
 
