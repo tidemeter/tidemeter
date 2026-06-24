@@ -249,8 +249,11 @@ export const Websites: CollectionConfig = {
           if (Array.isArray(roles) && roles.includes("admin")) return true;
           if (!req.user || !doc) return false;
 
+          // Normalize the team value (can be a scalar ID or populated object).
+          const currentTeamId = getRelationId(doc.team);
+
           // If the website has no team yet, the creator can assign it.
-          if (!doc.team) {
+          if (!currentTeamId) {
             return String(doc.createdBy) === String(req.user.id);
           }
 
@@ -259,7 +262,7 @@ export const Websites: CollectionConfig = {
             collection: "team-members",
             where: {
               and: [
-                { team: { equals: doc.team } },
+                { team: { equals: currentTeamId } },
                 { user: { equals: req.user.id } },
                 { role: { equals: "owner" } },
               ],
