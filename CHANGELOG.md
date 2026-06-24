@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.17](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.16...tidemeter-v0.1.17) (2026-06-24)
+
+
+### Bug Fixes
+
+* normalize team relationship value ([94b04b7](https://github.com/tidemeter/tidemeter/commit/94b04b7e99373155feeec37203e9f2c34d1dd603))
+* team and creator access fixes ([85d3778](https://github.com/tidemeter/tidemeter/commit/85d3778978d31b5b3350241d60401b77ee9976ff))
+* teams tranfer validation ([27e7c3c](https://github.com/tidemeter/tidemeter/commit/27e7c3cfd878a93eb19f0f5bde16a44d69e9af27))
+* validateTeamChange runs on every update ([dc10bde](https://github.com/tidemeter/tidemeter/commit/dc10bde0fb6539a752587403ce1063ccfed978a2))
+
 ## [0.1.16](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.15...tidemeter-v0.1.16) (2026-06-23)
 
 
