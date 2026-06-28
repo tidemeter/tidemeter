@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.18](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.17...tidemeter-v0.1.18) (2026-06-28)
+
+
+### Features
+
+* add location determination by geoip ([3c45dc5](https://github.com/tidemeter/tidemeter/commit/3c45dc5bbe4066bd91a40e781a26a8713d57c8dc))
+
+
+### Bug Fixes
+
+* fix description and comments ([787a8ab](https://github.com/tidemeter/tidemeter/commit/787a8abbc6cf1f191cbf52eabdfd1bede6d379c1))
+* fix MaxMind archive detection, added startup refresh behavior ([ca741da](https://github.com/tidemeter/tidemeter/commit/ca741daa19e7b9eb6d9b109d5e560a938abb6235))
+
 ## [0.1.17](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.16...tidemeter-v0.1.17) (2026-06-24)
 
 
