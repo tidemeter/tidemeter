@@ -94,7 +94,7 @@ function isPrivateOrLocalIp(value: string): boolean {
  * Lazily opens the MaxMind MMDB database.
  *
  * Returns null when GEOIP_DB_PATH is not configured or the database
- * cannot be opened. A failed attempt may be retried later.
+ * cannot be opened.
  */
 async function getReader(): Promise<ReaderModel | null> {
   if (readerPromise) {
@@ -108,11 +108,8 @@ async function getReader(): Promise<ReaderModel | null> {
   }
 
   readerPromise = Reader.open(dbPath).catch((error: unknown) => {
-    // Allow a later request to retry after a transient failure.
-    readerPromise = undefined;
-
     console.warn(
-      `[geoip] No GeoIP database found at "${dbPath}". Location data will be empty.`,
+      `[geoip] Could not open database at "${dbPath}". GeoIP is disabled.`,
       error,
     );
 

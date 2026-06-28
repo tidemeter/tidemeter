@@ -15,7 +15,9 @@ services:
       - PAYLOAD_SECRET=${PAYLOAD_SECRET:-change-me-in-production-at-least-32-chars}
       - SESSION_SALT_SECRET=${SESSION_SALT_SECRET:-change-me-in-production}
       - NEXT_PUBLIC_APP_URL=http://localhost:3700
-      - GEOIP_DB_PATH=/app/apps/web/data/GeoLite2-City.mmdb
+      - GEOIP_EDITION_ID=${GEOIP_EDITION_ID:-GeoLite2-City}
+      - GEOIP_DB_PATH=${GEOIP_DB_PATH:-}
+      - GEOIP_UPDATE_INTERVAL_DAYS=${GEOIP_UPDATE_INTERVAL_DAYS:-7}
       - MAXMIND_ACCOUNT_ID=${MAXMIND_ACCOUNT_ID:-}
       - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY:-}
       - GEO_DATABASE_URL=${GEO_DATABASE_URL:-}

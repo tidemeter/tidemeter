@@ -50,7 +50,7 @@ function rateLimit(key: string): boolean {
 /**
  * Resolve the client IP honouring only `TRUSTED_PROXY_HOPS` proxy hops.
  * Defaults to 1 (single reverse proxy / ingress in front of the app).
- * Set to 0 to ignore X-Forwarded-For entirely (use the socket peer).
+ * Set to 0 to ignore X-Forwarded-For and use X-Real-IP when present.
  */
 function getClientIp(request: NextRequest): string {
   const trustedHops = Math.max(

@@ -195,9 +195,11 @@ All configuration is done through environment variables. For Docker Compose, cop
 | `ANALYTICS_SQLITE_PATH`       | Path to SQLite file (when using SQLite)                        | `./data/analytics.db`                                       |
 | `NEXT_PUBLIC_APP_URL`         | Public URL of the application                                  | `http://localhost:3700`                                     |
 | `SESSION_SALT_SECRET`         | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
-| `GEOIP_DB_PATH`               | Path to MaxMind GeoLite2-City.mmdb (optional)                  | Docker: `/app/apps/web/data/GeoLite2-City.mmdb`             |
-| `MAXMIND_ACCOUNT_ID`          | MaxMind account ID for downloading GeoLite2 City (optional)    | —                                                           |
-| `MAXMIND_LICENSE_KEY`         | MaxMind license key for downloading GeoLite2 City (optional)   | —                                                           |
+| `GEOIP_EDITION_ID`            | MaxMind edition ID for downloads                               | `GeoLite2-City`                                             |
+| `GEOIP_DB_PATH`               | Path to MaxMind `.mmdb` database (optional)                    | Docker: `/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb`       |
+| `GEOIP_UPDATE_INTERVAL_DAYS`  | Startup download refresh interval                              | `7`                                                         |
+| `MAXMIND_ACCOUNT_ID`          | MaxMind account ID for database downloads (optional)           | —                                                           |
+| `MAXMIND_LICENSE_KEY`         | MaxMind license key for database downloads (optional)          | —                                                           |
 | `GEO_DATABASE_URL`            | Direct `.mmdb` or `.tar.gz` GeoIP database URL (optional)      | —                                                           |
 | `DEMO_MODE`                   | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
 | `RESEND_API_KEY`              | Resend API key — if set, email is sent via Resend HTTP API     | —                                                           |
@@ -211,9 +213,11 @@ See [`apps/web/.env.example`](apps/web/.env.example) for the full annotated refe
 
 ### GeoIP Location Lookup
 
-TideMeter can enrich events with country, region, and city from an IP address when a MaxMind GeoLite2 City database is available. Without a database, location fields stay empty and ingestion continues normally.
+TideMeter can enrich events with country, region, and city from an IP address when a MaxMind City database is available. Without a database, location fields stay empty and ingestion continues normally.
 
-For Docker and Docker Compose, the image defaults `GEOIP_DB_PATH` to `/app/apps/web/data/GeoLite2-City.mmdb`. Provide either `MAXMIND_ACCOUNT_ID` + `MAXMIND_LICENSE_KEY`, or `GEO_DATABASE_URL`, and mount `/app/apps/web/data` to persistent storage. On each container start, TideMeter downloads the database only if that file is missing.
+For Docker and Docker Compose, the image defaults `GEOIP_EDITION_ID` to `GeoLite2-City` and `GEOIP_DB_PATH` to `/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb`. Provide either `MAXMIND_ACCOUNT_ID` + `MAXMIND_LICENSE_KEY`, or `GEO_DATABASE_URL`, and mount `/app/apps/web/data` to persistent storage. On each container start, TideMeter downloads the database when the file is missing, older than `GEOIP_UPDATE_INTERVAL_DAYS` days, or `FORCE_GEO_DOWNLOAD=1` is set.
+
+Paid MaxMind city databases can use `GEOIP_EDITION_ID=GeoIP2-City`.
 
 For local development or a self-built server:
 
@@ -223,6 +227,8 @@ MAXMIND_ACCOUNT_ID="..." MAXMIND_LICENSE_KEY="..." pnpm geoip:download
 ```
 
 Then set `GEOIP_DB_PATH=./data/GeoLite2-City.mmdb` before starting the app.
+
+For correct IP locations, run TideMeter behind a reverse proxy or ingress that overwrites `X-Forwarded-For` and `X-Real-IP`; do not expose the app directly while trusting proxy headers.
 
 ## First Admin & Email
 

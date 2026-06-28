@@ -1,5 +1,5 @@
-import { createWriteStream, existsSync } from "node:fs";
-import { mkdir, mkdtemp, rename, rm } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { copyFile, mkdir, mkdtemp, rename, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -10,9 +10,11 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 const rootDir = process.cwd();
+const editionId = process.env.GEOIP_EDITION_ID || "GeoLite2-City";
+const databaseFilename = `${editionId}.mmdb`;
 const outputPath = path.resolve(
   rootDir,
-  process.env.GEOIP_DB_PATH || "./data/GeoLite2-City.mmdb",
+  process.env.GEOIP_DB_PATH || `./data/${databaseFilename}`,
 );
 const geoDir = path.dirname(outputPath);
 
@@ -23,16 +25,47 @@ const licenseKey = process.env.MAXMIND_LICENSE_KEY;
 // Supports a direct .mmdb URL or a .tar.gz archive URL.
 const customUrl = process.env.GEO_DATABASE_URL;
 
-function isTarGz(url) {
-  return new URL(url).pathname.endsWith(".tar.gz");
+async function shouldDownload() {
+  if (process.env.FORCE_GEO_DOWNLOAD === "1") {
+    return true;
+  }
+
+  try {
+    const stats = await stat(outputPath);
+    const configuredIntervalDays = Number(
+      process.env.GEOIP_UPDATE_INTERVAL_DAYS ?? "7",
+    );
+    const intervalDays =
+      Number.isFinite(configuredIntervalDays) && configuredIntervalDays > 0
+        ? configuredIntervalDays
+        : 7;
+    const intervalMs = Math.max(intervalDays, 1) * 24 * 60 * 60 * 1000;
+
+    return Date.now() - stats.mtimeMs >= intervalMs;
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error) {
+      if (error.code === "ENOENT") {
+        return true;
+      }
+    }
+
+    throw error;
+  }
 }
 
-async function download(url, destination) {
+function isTarGz(url) {
+  const parsed = new URL(url);
+
+  return (
+    parsed.pathname.endsWith(".tar.gz") ||
+    parsed.searchParams.get("suffix") === "tar.gz"
+  );
+}
+
+async function download(url, destination, headers) {
   const response = await fetch(url, {
     redirect: "follow",
-    headers: {
-      "user-agent": "tidemeter-geoip-downloader",
-    },
+    headers,
   });
 
   if (!response.ok || !response.body) {
@@ -47,12 +80,23 @@ async function download(url, destination) {
   );
 }
 
+async function replaceDatabase(sourcePath, destinationPath) {
+  const temporaryOutputPath = `${destinationPath}.download-${process.pid}`;
+
+  try {
+    await copyFile(sourcePath, temporaryOutputPath);
+    await rename(temporaryOutputPath, destinationPath);
+  } catch (error) {
+    await rm(temporaryOutputPath, { force: true });
+    throw error;
+  }
+}
+
 async function main() {
   await mkdir(geoDir, { recursive: true });
 
-  if (existsSync(outputPath) && process.env.FORCE_GEO_DOWNLOAD !== "1") {
-    console.log(`[geoip] Database already exists: ${outputPath}`);
-    console.log("[geoip] Set FORCE_GEO_DOWNLOAD=1 to download again.");
+  if (!(await shouldDownload())) {
+    console.log(`[geoip] Database is current: ${outputPath}`);
     return;
   }
 
@@ -60,15 +104,15 @@ async function main() {
 
   try {
     let url = customUrl;
+    const headers = {
+      "user-agent": "tidemeter-geoip-downloader",
+    };
 
     if (!url && accountId && licenseKey) {
-      const query = new URLSearchParams({
-        edition_id: "GeoLite2-City",
-        license_key: licenseKey,
-        suffix: "tar.gz",
-      });
-
-      url = `https://download.maxmind.com/app/geoip_download?${query}`;
+      url = `https://download.maxmind.com/geoip/databases/${editionId}/download?suffix=tar.gz`;
+      headers.authorization = `Basic ${Buffer.from(
+        `${accountId}:${licenseKey}`,
+      ).toString("base64")}`;
     }
 
     if (!url) {
@@ -82,10 +126,10 @@ async function main() {
     }
 
     if (isTarGz(url)) {
-      const archivePath = path.join(tempDir, "GeoLite2-City.tar.gz");
+      const archivePath = path.join(tempDir, `${editionId}.tar.gz`);
 
-      console.log("[geoip] Downloading GeoLite2 City archive...");
-      await download(url, archivePath);
+      console.log(`[geoip] Downloading ${editionId} archive...`);
+      await download(url, archivePath, headers);
 
       console.log("[geoip] Extracting database...");
       await execFileAsync("tar", ["-xzf", archivePath, "-C", tempDir]);
@@ -93,7 +137,7 @@ async function main() {
       const { stdout } = await execFileAsync("find", [
         tempDir,
         "-name",
-        "GeoLite2-City.mmdb",
+        databaseFilename,
         "-type",
         "f",
         "-print",
@@ -104,18 +148,18 @@ async function main() {
 
       if (!extractedPath) {
         throw new Error(
-          "Archive downloaded successfully, but GeoLite2-City.mmdb was not found.",
+          `Archive downloaded successfully, but ${databaseFilename} was not found.`,
         );
       }
 
-      await rename(extractedPath, outputPath);
+      await replaceDatabase(extractedPath, outputPath);
     } else {
-      const temporaryDatabasePath = path.join(tempDir, "GeoLite2-City.mmdb");
+      const temporaryDatabasePath = path.join(tempDir, databaseFilename);
 
-      console.log("[geoip] Downloading GeoLite2 City database...");
-      await download(url, temporaryDatabasePath);
+      console.log(`[geoip] Downloading ${editionId} database...`);
+      await download(url, temporaryDatabasePath, headers);
 
-      await rename(temporaryDatabasePath, outputPath);
+      await replaceDatabase(temporaryDatabasePath, outputPath);
     }
 
     console.log(`[geoip] Saved database: ${outputPath}`);
