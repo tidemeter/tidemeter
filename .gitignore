@@ -30,7 +30,8 @@ node_modules/
 dist/
 
 # Data files
-data/
+data/**
+!data/.gitkeep
 *.mmdb
 
 tsconfig.tsbuildinfo

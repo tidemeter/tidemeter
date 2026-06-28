@@ -9,10 +9,12 @@
     "start": "next start",
     "lint": "eslint",
     "clean": "rm -rf .next .turbo",
+    "geoip:download": "node scripts/download-geoip.mjs",
     "generate:types": "payload generate:types",
     "test": "vitest run"
   },
   "dependencies": {
+    "@maxmind/geoip2-node": "^6.3.4",
     "@payloadcms/db-postgres": "^3.85.1",
     "@payloadcms/email-nodemailer": "^3.85.1",
     "@payloadcms/email-resend": "^3.85.1",

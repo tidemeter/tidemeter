@@ -3,6 +3,7 @@ import crypto from "crypto";
 import type { PageEvent } from "@tidemeter/analytics";
 import { eventBuffer } from "./buffer";
 import { getAnalyticsRepository } from "@/lib/analytics";
+import { lookupGeo } from "./geoip";
 
 interface CollectPayload {
   websiteId: string;
@@ -167,6 +168,8 @@ export async function processEvent(payload: CollectPayload): Promise<void> {
     return;
   }
 
+  const { country, region, city } = await lookupGeo(payload.ip);
+
   const event: PageEvent = {
     websiteId: payload.websiteId,
     sessionId,
@@ -182,9 +185,9 @@ export async function processEvent(payload: CollectPayload): Promise<void> {
     utmCampaign: utm.utmCampaign ?? "",
     utmContent: utm.utmContent ?? "",
     utmTerm: utm.utmTerm ?? "",
-    country: "", // GeoIP lookup would go here
-    region: "",
-    city: "",
+    country,
+    region,
+    city,
     browser: browser.name || "",
     browserVersion: browser.version || "",
     os: os.name || "",
