@@ -198,6 +198,7 @@ All configuration is done through environment variables. For Docker Compose, cop
 | `GEOIP_EDITION_ID`            | MaxMind edition ID for downloads                               | `GeoLite2-City`                                             |
 | `GEOIP_DB_PATH`               | Path to MaxMind `.mmdb` database (optional)                    | Docker: `/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb`       |
 | `GEOIP_UPDATE_INTERVAL_DAYS`  | Startup download refresh interval                              | `7`                                                         |
+| `FORCE_GEO_DOWNLOAD`          | Force a GeoIP download regardless of database age              | —                                                           |
 | `MAXMIND_ACCOUNT_ID`          | MaxMind account ID for database downloads (optional)           | —                                                           |
 | `MAXMIND_LICENSE_KEY`         | MaxMind license key for database downloads (optional)          | —                                                           |
 | `GEO_DATABASE_URL`            | Direct `.mmdb` or `.tar.gz` GeoIP database URL (optional)      | —                                                           |
