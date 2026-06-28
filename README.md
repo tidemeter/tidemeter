@@ -52,14 +52,33 @@ docker run -d \
 
 # Pull and run TideMeter
 docker run -d \
-  -p 3700:3700 \
+  -p 3700:3000 \
   -e DATABASE_URL="postgresql://postgres:postgres@host.docker.internal:5432/tidemeter" \
   -e PAYLOAD_SECRET="your-secret-key-minimum-32-characters" \
+  -e SESSION_SALT_SECRET="your-session-salt-minimum-32-characters" \
   -e NEXT_PUBLIC_APP_URL="http://localhost:3700" \
   tidemeter/tidemeter:latest
 ```
 
 Browse all available tags on [Docker Hub → tidemeter/tidemeter](https://hub.docker.com/r/tidemeter/tidemeter).
+
+Optional GeoIP location lookup uses the MaxMind GeoLite2 City database. With the Docker image, set your MaxMind credentials or a custom database URL and mount `/app/apps/web/data` to persistent storage. The container downloads the database on startup when it is missing; if the volume already contains `GeoLite2-City.mmdb`, the download is skipped.
+
+```bash
+docker volume create tidemeter-geoip
+docker run -d \
+  -p 3700:3000 \
+  -v tidemeter-geoip:/app/apps/web/data \
+  -e DATABASE_URL="postgresql://postgres:postgres@host.docker.internal:5432/tidemeter" \
+  -e PAYLOAD_SECRET="your-secret-key-minimum-32-characters" \
+  -e SESSION_SALT_SECRET="your-session-salt-minimum-32-characters" \
+  -e NEXT_PUBLIC_APP_URL="http://localhost:3700" \
+  -e MAXMIND_ACCOUNT_ID="your-account-id" \
+  -e MAXMIND_LICENSE_KEY="your-license-key" \
+  tidemeter/tidemeter:latest
+```
+
+You can also set `GEO_DATABASE_URL` to a direct `.mmdb` or `.tar.gz` URL instead of using MaxMind credentials.
 
 ### Option B: Docker Compose
 
@@ -68,7 +87,7 @@ Clone the repo and bring up everything (app + database) with one command:
 ```bash
 git clone https://github.com/tidemeter/tidemeter.git
 cd tidemeter
-cp .env.example .env
+cp apps/web/.env.example .env
 # Edit .env — at minimum, set PAYLOAD_SECRET and SESSION_SALT_SECRET
 docker compose -f docker/docker-compose.yml up -d
 ```
@@ -94,7 +113,7 @@ git clone https://github.com/tidemeter/tidemeter.git
 cd tidemeter
 pnpm install
 
-cp .env.example .env
+cp apps/web/.env.example apps/web/.env
 # Edit .env — point DATABASE_URL to your PostgreSQL instance
 
 pnpm dev        # Start dev server with Turbopack HMR
@@ -119,13 +138,13 @@ Add the tracking script to any website you want to monitor. The `data-website-id
 
 ### Script Attributes
 
-| Attribute          | Description                                   | Default       |
-| ------------------ | --------------------------------------------- | ------------- |
+| Attribute          | Description                                                    | Default       |
+| ------------------ | -------------------------------------------------------------- | ------------- |
 | `data-website-id`  | **(required)** Public Website ID from Settings → Tracking Code | —             |
-| `data-host-url`    | Override the analytics endpoint URL           | Script origin |
-| `data-auto-track`  | Auto-track pageviews                          | `true`        |
-| `data-respect-dnt` | Respect the Do-Not-Track header               | `true`        |
-| `data-domains`     | Comma-separated list of allowed domains       | All domains   |
+| `data-host-url`    | Override the analytics endpoint URL                            | Script origin |
+| `data-auto-track`  | Auto-track pageviews                                           | `true`        |
+| `data-respect-dnt` | Respect the Do-Not-Track header                                | `true`        |
+| `data-domains`     | Comma-separated list of allowed domains                        | All domains   |
 
 ### Custom Events
 
@@ -163,29 +182,54 @@ TideMeter is a **Turborepo monorepo** with a clear separation between the applic
 
 ## Configuration
 
-All configuration is done through environment variables. Copy `.env.example` to `.env` and adjust:
+All configuration is done through environment variables. For Docker Compose, copy `apps/web/.env.example` to `.env` in the repository root. For local development, copy it to `apps/web/.env`.
 
-| Variable                 | Description                                                    | Default                                                     |
-| ------------------------ | -------------------------------------------------------------- | ----------------------------------------------------------- |
-| `DATABASE_URL`           | PostgreSQL connection string for PayloadCMS                    | `postgresql://tidemeter:tidemeter@localhost:5432/tidemeter` |
-| `PAYLOAD_SECRET`         | Secret for PayloadCMS auth (min 32 chars)                      | —                                                           |
-| `ANALYTICS_DB_TYPE`      | Analytics storage engine: `postgresql`, `clickhouse`, `sqlite` | `postgresql`                                                |
-| `ANALYTICS_DATABASE_URL` | Connection string for analytics DB (PostgreSQL)                | Same as `DATABASE_URL`                                      |
-| `CLICKHOUSE_URL`         | ClickHouse HTTP endpoint                                       | `http://localhost:8123`                                     |
-| `CLICKHOUSE_DATABASE`    | ClickHouse database name                                       | `tidemeter_analytics`                                       |
-| `ANALYTICS_SQLITE_PATH`  | Path to SQLite file (when using SQLite)                        | `./data/analytics.db`                                       |
-| `NEXT_PUBLIC_APP_URL`    | Public URL of the application                                  | `http://localhost:3700`                                     |
-| `SESSION_SALT_SECRET`    | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
-| `GEOIP_DB_PATH`          | Path to MaxMind GeoLite2-City.mmdb (optional)                  | —                                                           |
-| `DEMO_MODE`              | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
-| `RESEND_API_KEY`         | Resend API key — if set, email is sent via Resend HTTP API     | —                                                           |
-| `SMTP_HOST`              | SMTP server for password reset / verification email (optional) | —                                                           |
-| `SMTP_PORT`              | SMTP server port                                               | `587`                                                       |
-| `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials                                          | —                                                           |
-| `SMTP_FROM_ADDRESS`      | From address for outgoing email                                | `no-reply@localhost`                                        |
-| `SMTP_FROM_NAME`         | From name for outgoing email                                   | `TideMeter`                                                 |
+| Variable                      | Description                                                    | Default                                                     |
+| ----------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`                | PostgreSQL connection string for PayloadCMS                    | `postgresql://tidemeter:tidemeter@localhost:5432/tidemeter` |
+| `PAYLOAD_SECRET`              | Secret for PayloadCMS auth (min 32 chars)                      | —                                                           |
+| `ANALYTICS_DB_TYPE`           | Analytics storage engine: `postgresql`, `clickhouse`, `sqlite` | `postgresql`                                                |
+| `ANALYTICS_DATABASE_URL`      | Connection string for analytics DB (PostgreSQL)                | Same as `DATABASE_URL`                                      |
+| `CLICKHOUSE_URL`              | ClickHouse HTTP endpoint                                       | `http://localhost:8123`                                     |
+| `CLICKHOUSE_DATABASE`         | ClickHouse database name                                       | `tidemeter_analytics`                                       |
+| `ANALYTICS_SQLITE_PATH`       | Path to SQLite file (when using SQLite)                        | `./data/analytics.db`                                       |
+| `NEXT_PUBLIC_APP_URL`         | Public URL of the application                                  | `http://localhost:3700`                                     |
+| `SESSION_SALT_SECRET`         | Secret for hashing visitor IDs (rotated daily)                 | —                                                           |
+| `GEOIP_EDITION_ID`            | MaxMind edition ID for downloads                               | `GeoLite2-City`                                             |
+| `GEOIP_DB_PATH`               | Path to MaxMind `.mmdb` database (optional)                    | Docker: `/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb`       |
+| `GEOIP_UPDATE_INTERVAL_DAYS`  | Startup download refresh interval                              | `7`                                                         |
+| `FORCE_GEO_DOWNLOAD`          | Force a GeoIP download regardless of database age              | —                                                           |
+| `MAXMIND_ACCOUNT_ID`          | MaxMind account ID for database downloads (optional)           | —                                                           |
+| `MAXMIND_LICENSE_KEY`         | MaxMind license key for database downloads (optional)          | —                                                           |
+| `GEO_DATABASE_URL`            | Direct `.mmdb` or `.tar.gz` GeoIP database URL (optional)      | —                                                           |
+| `DEMO_MODE`                   | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
+| `RESEND_API_KEY`              | Resend API key — if set, email is sent via Resend HTTP API     | —                                                           |
+| `SMTP_HOST`                   | SMTP server for password reset / verification email (optional) | —                                                           |
+| `SMTP_PORT`                   | SMTP server port                                               | `587`                                                       |
+| `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials                                               | —                                                           |
+| `SMTP_FROM_ADDRESS`           | From address for outgoing email                                | `no-reply@localhost`                                        |
+| `SMTP_FROM_NAME`              | From name for outgoing email                                   | `TideMeter`                                                 |
 
-See [`.env.example`](.env.example) for the full annotated reference.
+See [`apps/web/.env.example`](apps/web/.env.example) for the full annotated reference.
+
+### GeoIP Location Lookup
+
+TideMeter can enrich events with country, region, and city from an IP address when a MaxMind City database is available. Without a database, location fields stay empty and ingestion continues normally.
+
+For Docker and Docker Compose, the image defaults `GEOIP_EDITION_ID` to `GeoLite2-City` and `GEOIP_DB_PATH` to `/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb`. Provide either `MAXMIND_ACCOUNT_ID` + `MAXMIND_LICENSE_KEY`, or `GEO_DATABASE_URL`, and mount `/app/apps/web/data` to persistent storage. On each container start, TideMeter downloads the database when the file is missing, older than `GEOIP_UPDATE_INTERVAL_DAYS` days, or `FORCE_GEO_DOWNLOAD=1` is set.
+
+Paid MaxMind city databases can use `GEOIP_EDITION_ID=GeoIP2-City`.
+
+For local development or a self-built server:
+
+```bash
+cd apps/web
+MAXMIND_ACCOUNT_ID="..." MAXMIND_LICENSE_KEY="..." pnpm geoip:download
+```
+
+Then set `GEOIP_DB_PATH=./data/GeoLite2-City.mmdb` before starting the app.
+
+For correct IP locations, run TideMeter behind a reverse proxy or ingress that overwrites `X-Forwarded-For` and `X-Real-IP`; do not expose the app directly while trusting proxy headers.
 
 ## First Admin & Email
 

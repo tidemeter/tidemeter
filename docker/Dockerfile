@@ -57,20 +57,26 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 # Copy tracker script into public
 COPY --from=builder /app/packages/tracker/dist/t.js ./apps/web/public/t.js
 
+# Copy optional GeoIP downloader used at container startup
+COPY --from=builder /app/apps/web/scripts/download-geoip.mjs ./apps/web/scripts/download-geoip.mjs
+
 # Copy analytics SQL migration files (read at runtime by migrate.ts via fs)
 COPY --from=builder /app/packages/analytics/drizzle ./packages/analytics/drizzle
 # Copy ClickHouse migration files (read at runtime by migrate-clickhouse.ts)
 COPY --from=builder /app/packages/analytics/clickhouse ./packages/analytics/clickhouse
+
+RUN mkdir -p ./apps/web/data && chown -R tidemeter:tidemeter ./apps/web/data
 
 USER tidemeter
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ENV GEOIP_EDITION_ID=GeoLite2-City
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-CMD ["node", "apps/web/server.js"]
+CMD ["sh", "-c", ": \"${GEOIP_EDITION_ID:=GeoLite2-City}\"; : \"${GEOIP_DB_PATH:=/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb}\"; export GEOIP_EDITION_ID GEOIP_DB_PATH; if [ -n \"$GEO_DATABASE_URL\" ] || { [ -n \"$MAXMIND_ACCOUNT_ID\" ] && [ -n \"$MAXMIND_LICENSE_KEY\" ]; }; then node apps/web/scripts/download-geoip.mjs || echo '[geoip] Download failed; starting without GeoIP database.'; fi; exec node apps/web/server.js"]
