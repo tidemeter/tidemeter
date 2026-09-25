@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.18...tidemeter-v0.1.19) (2026-09-25)
+
+
+### Bug Fixes
+
+* trigger release ([91c9b28](https://github.com/tidemeter/tidemeter/commit/91c9b28d74319fc105de9bcfe432b5462bfb0225))
+
 ## [0.1.18](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.17...tidemeter-v0.1.18) (2026-06-28)
 
 
