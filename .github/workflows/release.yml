@@ -31,6 +31,8 @@ jobs:
     if: needs.release-please.outputs.release_created == 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.release-please.outputs.tag_name }}
 
       - uses: pnpm/action-setup@v4
 
@@ -68,11 +70,12 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
+          context: git
           images: ${{ secrets.DOCKERHUB_USERNAME }}/tidemeter
           tags: |
-            type=raw,value=latest
             type=raw,value=${{ needs.release-please.outputs.version }}
             type=raw,value=${{ needs.release-please.outputs.tag_name }}
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

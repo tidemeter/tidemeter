@@ -60,7 +60,7 @@ docker run -d \
   tidemeter/tidemeter:latest
 ```
 
-Browse all available tags on [Docker Hub → tidemeter/tidemeter](https://hub.docker.com/r/tidemeter/tidemeter).
+Use `latest` to follow releases, or pin a deployment to its GitHub release tag (for example, `tidemeter-v0.1.19`). Builds from ordinary pushes to `main` use the short commit SHA. [Browse Docker Hub tags](https://hub.docker.com/r/tidemeter/tidemeter/tags).
 
 Optional GeoIP location lookup uses the MaxMind GeoLite2 City database. With the Docker image, set your MaxMind credentials or a custom database URL and mount `/app/apps/web/data` to persistent storage. The container downloads the database on startup when it is missing; if the volume already contains `GeoLite2-City.mmdb`, the download is skipped.
 
