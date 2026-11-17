@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { pbkdf2Sync, randomBytes } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 
 // Build the image first: docker build -f docker/Dockerfile -t tidemeter:payload-migration-validation .
@@ -38,24 +38,26 @@ async function api(base, path, data, token) {
   });
   return { status: response.status, body: await response.json() };
 }
-async function ready(base, container, expectFailure = false) {
-  for (let i = 0; i < 80; i++) {
-    let healthy = false;
-    try { healthy = (await api(base, 'health')).status === 200; } catch { /* Startup may close the connection. */ }
-    if (healthy) {
-      assert.equal(expectFailure, false, 'Migration failure must not report ready');
-      return;
-    }
-    const running = docker('inspect', '-f', '{{.State.Running}}', container) === 'true';
-    if (!running) {
-      assert.equal(expectFailure, true, 'Application exited during initialization');
-      assert.notEqual(docker('inspect', '-f', '{{.State.ExitCode}}', container), '0');
+// Inspect Docker's state so the shipped health check triggers initialization.
+async function waitForDockerHealth(container, expectFailure = false) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const state = JSON.parse(docker('inspect', '-f', '{{json .State}}', container));
+    if (!state.Running) {
+      assert.ok(expectFailure, 'Application exited during initialization');
+      assert.notEqual(state.ExitCode, 0);
       assert.ok(docker('logs', container).includes(migrationName));
       return;
     }
-    await delay(250);
+    assert.ok(state.Health, 'Image must define a Docker health check');
+    if (state.Health.Status === 'healthy') {
+      assert.ok(!expectFailure, 'Migration failure must not report healthy');
+      return;
+    }
+    assert.notEqual(state.Health.Status, 'unhealthy', JSON.stringify(state.Health.Log));
+    await delay(500);
   }
-  throw new Error(`Timed out waiting for ${container}`);
+  throw new Error(`Timed out waiting for Docker health for ${container}`);
 }
 try {
   docker('network', 'create', prefix);
@@ -63,7 +65,7 @@ try {
   docker('run', '-d', '--name', pg, '--network', prefix, '--network-alias', 'db', '--tmpfs', '/var/lib/postgresql/data', '-e', 'POSTGRES_USER=test', '-e', 'POSTGRES_PASSWORD=test', '-e', 'POSTGRES_DB=postgres', 'postgres:16-alpine');
   let connected = false;
   for (let i = 0; i < 80; i++) {
-    try { docker('exec', pg, 'pg_isready', '-U', 'test'); connected = true; break; } catch { await delay(250); }
+    try { docker('exec', pg, 'pg_isready', '-h', '127.0.0.1', '-U', 'test', '-d', 'postgres'); connected = true; break; } catch { await delay(250); }
   }
   assert.ok(connected, 'Disposable PostgreSQL did not start');
   for (const scenario of ['fresh', 'upgrade', 'existing_column', 'failure']) {
@@ -88,9 +90,7 @@ try {
       '-e', `ANALYTICS_DATABASE_URL=postgresql://test:test@db:5432/${scenario}`,
       '-e', 'PAYLOAD_SECRET=disposable-migration-test-secret-123456',
       '-e', 'SESSION_SALT_SECRET=disposable-migration-test-salt', image);
-    const port = JSON.parse(docker('inspect', '-f', '{{json .NetworkSettings.Ports}}', app))['3000/tcp'][0].HostPort;
-    let base = `http://127.0.0.1:${port}`;
-    await ready(base, app, scenario === 'failure');
+    await waitForDockerHealth(app, scenario === 'failure');
     if (scenario === 'failure') {
       assert.equal(sql(scenario, `SELECT count(*) FROM payload_migrations WHERE name='${migrationName}';`), '0');
       console.log('PASS failed migration blocks readiness and is not recorded');
@@ -105,10 +105,13 @@ try {
       assert.equal(sql(scenario, "SELECT count(*) FROM users_sessions WHERE id='existing-session';"), '1');
       if (scenario === 'existing_column') assert.equal(sql(scenario, "SELECT reset_password_requested_at='2020-01-01T00:00:00Z' FROM users WHERE id=1;"), 't');
     }
+    const appliedAnalytics = sql(scenario, 'SELECT name FROM analytics._migrations ORDER BY name;');
+    const expectedAnalytics = readdirSync('packages/analytics/drizzle').filter(name => name.endsWith('.sql')).sort();
+    assert.deepEqual(appliedAnalytics.split('\n'), expectedAnalytics);
     docker('restart', app);
+    await waitForDockerHealth(app);
     const restartedPort = JSON.parse(docker('inspect', '-f', '{{json .NetworkSettings.Ports}}', app))['3000/tcp'][0].HostPort;
-    base = `http://127.0.0.1:${restartedPort}`;
-    await ready(base, app);
+    const base = `http://127.0.0.1:${restartedPort}`;
     assert.equal(sql(scenario, `SELECT count(*) FROM payload_migrations WHERE name='${migrationName}';`), '1');
     if (scenario === 'fresh') {
       const created = await api(base, 'users/first-register', { email: 'fresh@example.com', password });

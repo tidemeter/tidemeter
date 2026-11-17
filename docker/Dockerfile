@@ -77,6 +77,6 @@ ENV GEOIP_EDITION_ID=GeoLite2-City
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
 
 CMD ["sh", "-c", ": \"${GEOIP_EDITION_ID:=GeoLite2-City}\"; : \"${GEOIP_DB_PATH:=/app/apps/web/data/${GEOIP_EDITION_ID}.mmdb}\"; export GEOIP_EDITION_ID GEOIP_DB_PATH; if [ -n \"$GEO_DATABASE_URL\" ] || { [ -n \"$MAXMIND_ACCOUNT_ID\" ] && [ -n \"$MAXMIND_LICENSE_KEY\" ]; }; then node apps/web/scripts/download-geoip.mjs || echo '[geoip] Download failed; starting without GeoIP database.'; fi; exec node apps/web/server.js"]

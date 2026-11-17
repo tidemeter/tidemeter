@@ -274,7 +274,7 @@ When the app boots and first initializes PayloadCMS:
 
 If **any** of these steps fail, `onInit` re-throws and the pod fails its readiness probe. Kubernetes then halts the rollout and keeps the previous version serving traffic. Logs always end with the failing step.
 
-Init is triggered by any request that imports the Payload config — including `/api/health`, which is hit by the readiness/startup probes. So a freshly-rolled pod self-migrates as soon as the probe starts. The database role needs schema `CREATE` privileges and ownership of the tables it migrates (for `ALTER TABLE`).
+Docker’s built-in health check calls `/api/health` and triggers initialization. Kubernetes startup and readiness probes can use the same endpoint. The database role needs schema `CREATE` privileges and ownership of the tables it migrates (for `ALTER TABLE`).
 
 > **No tables right after deploy?** That's expected for a few seconds. Migrations don't run at process start — they run on the **first request** that touches Payload. If you `kubectl apply` and immediately inspect the DB, it will be empty until the readiness probe hits `/api/health` (or you `curl` it yourself). Once the pod reports `Ready`, the schema is in place. If tables still don't appear, check pod logs for `[payload:onInit]` errors and verify the `DATABASE_URL` role has `CREATE` privileges.
 

@@ -39,7 +39,7 @@ services:
     ports:
       - "5480:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tidemeter"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tidemeter"]
       interval: 5s
       timeout: 5s
       retries: 5
