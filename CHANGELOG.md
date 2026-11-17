@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.20](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.19...tidemeter-v0.1.20) (2026-11-17)
+
+
+### Features
+
+* bump node and packages versions ([1fea2db](https://github.com/tidemeter/tidemeter/commit/1fea2db5bcc8708e03b0ad3f0f6a96593e7bfc48))
+* fix docker health check ([29f98d9](https://github.com/tidemeter/tidemeter/commit/29f98d9c6d26ed0e51b198e02ecd753409740c39))
+* fix docker versioning ([638f58a](https://github.com/tidemeter/tidemeter/commit/638f58a4fc15a1d8c74db517ea5f739a25f02a7a))
+
 ## [0.1.19](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.18...tidemeter-v0.1.19) (2026-09-25)
 
 
