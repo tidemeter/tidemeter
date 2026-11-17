@@ -3,22 +3,22 @@
 # ============================================
 
 # --- Stage 1: Dependencies ---
-FROM node:22-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+FROM node:26.13.1-alpine AS deps
+RUN npm install --global pnpm@12.21.0
 WORKDIR /app
 
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/tracker/package.json ./packages/tracker/
 COPY packages/analytics/package.json ./packages/analytics/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
 
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm install --frozen-lockfile
 
 # --- Stage 2: Builder ---
-FROM node:22-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+FROM node:26.13.1-alpine AS builder
+RUN npm install --global pnpm@12.21.0
 WORKDIR /app
 
 ARG DATABASE_URL=postgresql://tidemeter:tidemeter@127.0.0.1:5432/tidemeter
@@ -43,7 +43,7 @@ COPY . .
 RUN pnpm turbo build
 
 # --- Stage 3: Runner ---
-FROM node:22-alpine AS runner
+FROM node:26.13.1-alpine AS runner
 RUN addgroup --system --gid 1001 tidemeter && \
     adduser --system --uid 1001 tidemeter
 

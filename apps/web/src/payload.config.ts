@@ -22,9 +22,9 @@ const __dirname = path.dirname(__filename);
  * In production we apply versioned migrations from `prodMigrations` so
  * schema changes are explicit, reviewable, and safe across replicas.
  *
- * Override with `PAYLOAD_DB_PUSH=true|false` if you need the other mode
- * (e.g. set to `true` once when upgrading an old deployment that was
- * originally created in push mode and has no payload_migrations rows).
+ * `PAYLOAD_DB_PUSH` selects push vs migrations in development. The adapter
+ * always runs prodMigrations in production and does not push there, even
+ * when this flag is true. Legacy push databases need a verified baseline.
  */
 function shouldUsePush(): boolean {
   if (process.env.PAYLOAD_DB_PUSH === "true") return true;

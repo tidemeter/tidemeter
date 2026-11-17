@@ -102,8 +102,8 @@ For contributors and anyone who wants to build from source.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org) 22+
-- [pnpm](https://pnpm.io) 9+
+- [Node.js](https://nodejs.org) 26.13.1 or newer in the 26.x LTS line
+- [pnpm](https://pnpm.io) 12.21.0 (`npm install -g pnpm@12.21.0`)
 - [PostgreSQL](https://www.postgresql.org) 16+ (or use Docker for the database)
 
 ### Install & Run
@@ -111,7 +111,8 @@ For contributors and anyone who wants to build from source.
 ```bash
 git clone https://github.com/tidemeter/tidemeter.git
 cd tidemeter
-pnpm install
+nvm install && nvm use  # Uses the version pinned in .nvmrc
+pnpm install --frozen-lockfile
 
 cp apps/web/.env.example apps/web/.env
 # Edit .env — point DATABASE_URL to your PostgreSQL instance
@@ -273,7 +274,7 @@ When the app boots and first initializes PayloadCMS:
 
 If **any** of these steps fail, `onInit` re-throws and the pod fails its readiness probe. Kubernetes then halts the rollout and keeps the previous version serving traffic. Logs always end with the failing step.
 
-Init is triggered by any request that imports the Payload config — including `/api/health`, which is hit by the readiness/startup probes. So a freshly-rolled pod self-migrates as soon as the probe starts. The database user just needs `CREATE` privileges.
+Init is triggered by any request that imports the Payload config — including `/api/health`, which is hit by the readiness/startup probes. So a freshly-rolled pod self-migrates as soon as the probe starts. The database role needs schema `CREATE` privileges and ownership of the tables it migrates (for `ALTER TABLE`).
 
 > **No tables right after deploy?** That's expected for a few seconds. Migrations don't run at process start — they run on the **first request** that touches Payload. If you `kubectl apply` and immediately inspect the DB, it will be empty until the readiness probe hits `/api/health` (or you `curl` it yourself). Once the pod reports `Ready`, the schema is in place. If tables still don't appear, check pod logs for `[payload:onInit]` errors and verify the `DATABASE_URL` role has `CREATE` privileges.
 
@@ -290,23 +291,27 @@ When you change a Payload collection (add a field, new collection, etc.):
    cd apps/web && pnpm exec payload migrate:create
    ```
 
-3. Commit the new file under `apps/web/src/migrations/` plus the regenerated `index.ts`. The next image build picks it up and applies it on boot.
+3. Commit the new migration and `.json` snapshot under `apps/web/src/migrations/` plus the regenerated `index.ts` and `payload-types.ts`. The next image build picks it up and applies it on boot.
 
 For analytics tables, add a new numbered `.sql` file in `packages/analytics/drizzle/` (e.g. `0002_add_column.sql`) and update the Drizzle schema in `packages/analytics/src/schema/tables.ts`.
 
+To test a Payload upgrade against fresh and existing PostgreSQL databases:
+
+```bash
+docker build -f docker/Dockerfile -t tidemeter:payload-migration-validation .
+pnpm test:migrations
+```
+
 ### Upgrading an old deployment created in push mode
 
-If your existing database was created by an older TideMeter image (which used Drizzle push in production), the schema is already there but the `payload_migrations` table is empty — the new migration runner would fail trying to recreate existing tables. Two options:
+If your existing database was created by an older TideMeter image (which used Drizzle push in production), the schema is already there but the `payload_migrations` table is empty — the new migration runner would fail trying to recreate existing tables. After backing up the database and verifying its schema matches the initial migration, baseline it by inserting a row marking only that migration as applied:
 
-- **One-shot push override**: set `PAYLOAD_DB_PUSH=true` for a single boot, let push reconcile, then unset it. Subsequent boots use migrations.
-- **Baseline manually**: insert a row marking the initial migration as applied:
+```sql
+INSERT INTO payload_migrations (name, batch, created_at, updated_at)
+VALUES ('20260405_190832', 1, NOW(), NOW());
+```
 
-  ```sql
-  INSERT INTO payload_migrations (name, batch, created_at, updated_at)
-  VALUES ('20260405_190832', 1, NOW(), NOW());
-  ```
-
-  Then restart the pod normally.
+Then restart the pod normally so later migrations run. Do not mark pending migrations as applied. `PAYLOAD_DB_PUSH=true` does not baseline a database or enable schema push in production with the current Payload adapter. A development `batch = -1` migration marker also needs to be reconciled before unattended production startup.
 
 ## Demo Mode
 
@@ -363,14 +368,14 @@ For production, place TideMeter behind a reverse proxy (Nginx, Caddy, Traefik) f
 
 | Layer         | Technology                       |
 | ------------- | -------------------------------- |
-| Framework     | Next.js 16                       |
+| Framework     | Next.js 16.4                     |
 | CMS           | PayloadCMS 3                     |
 | Styling       | Tailwind CSS 4                   |
 | Charts        | Recharts                         |
 | State         | React Hooks                      |
 | Analytics ORM | Drizzle ORM                      |
 | Build         | Turborepo + pnpm                 |
-| Runtime       | Node.js 22 (Alpine)              |
+| Runtime       | Node.js 26.13.1 LTS (Alpine)      |
 | Docker        | Multi-stage Dockerfile + Compose |
 
 ## Project Structure

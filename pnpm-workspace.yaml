@@ -3,7 +3,14 @@ packages:
   - "packages/*"
 
 overrides:
-  undici: "7.30.0"
-  nodemailer: "9.1.1"
-  "dompurify@<3.4.16": "3.4.16"
+  "undici@<7.30.1": "7.30.1"
+  "dompurify@<3.4.18": "3.4.18"
   "esbuild@<0.28.2": "0.28.2"
+  "happy-dom@<21.0.4": "21.0.4"
+
+# Only these dependencies need installation scripts for native binaries.
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true

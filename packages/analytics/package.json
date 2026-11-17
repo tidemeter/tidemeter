@@ -31,16 +31,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@clickhouse/client": "^1.23.1",
-    "clickhouse-migrations": "^1.5.0",
-    "drizzle-orm": "^0.45.3",
+    "@clickhouse/client": "^1.25.0",
+    "clickhouse-migrations": "^1.6.0",
+    "drizzle-orm": "^0.45.4",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@tidemeter/tsconfig": "workspace:*",
-    "@types/node": "^22.20.4",
+    "@types/node": "^26.6.6",
     "drizzle-kit": "^0.31.11",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

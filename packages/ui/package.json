@@ -20,7 +20,7 @@
   "devDependencies": {
     "@tidemeter/tsconfig": "workspace:*",
     "@types/react": "^19.3.0",
-    "react": "^19.3.0",
+    "react": "^19.3.1",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {

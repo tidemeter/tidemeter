@@ -8,12 +8,12 @@ TideMeter is a Turborepo monorepo with four packages:
 
 | Package                | Path                  | Purpose                                         |
 | ---------------------- | --------------------- | ----------------------------------------------- |
-| `@tidemeter/web`       | `apps/web/`           | Next.js 16.2 + PayloadCMS 3 application         |
+| `@tidemeter/web`       | `apps/web/`           | Next.js 16.4 + PayloadCMS 3 application         |
 | `@tidemeter/tracker`   | `packages/tracker/`   | Lightweight tracking script (~1.5KB gzip)       |
 | `@tidemeter/analytics` | `packages/analytics/` | Analytics data layer (Drizzle ORM + ClickHouse) |
 | `@tidemeter/ui`        | `packages/ui/`        | Shared React UI components                      |
 
-**Stack**: Next.js 16.2, PayloadCMS 3, Tailwind CSS 4, Recharts, Drizzle ORM, TypeScript 5.9, pnpm 9
+**Stack**: Next.js 16.4, PayloadCMS 3, Tailwind CSS 4, Recharts, Drizzle ORM, TypeScript 5.9, pnpm 12
 
 ## Setup
 
@@ -171,15 +171,15 @@ There is **no database connection at build time** (CI/CD builds on GitHub). All 
 
 #### 1. PayloadCMS schema (users, teams, websites, API keys, funnels)
 
-Mode depends on `NODE_ENV` (override via `PAYLOAD_DB_PUSH=true|false`):
+Mode depends on `NODE_ENV` (`PAYLOAD_DB_PUSH=true|false` overrides development behavior only):
 
 - **Development** — Drizzle "push" mode auto-diffs collections vs the database and applies DDL on every boot. No migration files required while iterating.
 - **Production** — push is disabled. `onInit` calls `payload.db.migrate()`, which applies versioned migrations from `apps/web/src/migrations/` and tracks them in the `payload_migrations` table.
 
-When you change a collection that ships in production, generate a migration:
+When you change a collection that ships in production or upgrade Payload (which can change built-in auth fields), generate a migration:
 
 1. Run `pnpm exec payload migrate:create` inside `apps/web/`
-2. Commit the file under `apps/web/src/migrations/` plus the regenerated `index.ts`
+2. Commit the migration and `.json` schema snapshot under `apps/web/src/migrations/`, the regenerated `index.ts`, and `payload-types.ts`
 3. The next image deploy applies it on boot via `payload.db.migrate()`
 
 #### 2. Analytics schema (page_events, sessions, visitor_identities)

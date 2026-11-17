@@ -1,11 +1,11 @@
-node_modules
-.next
-.turbo
-dist
+**/node_modules
+**/.next
+**/.turbo
+**/dist
 old
 .git
 *.md
-.env*
-!.env.example
+**/.env*
+!**/.env.example
 docker
 data

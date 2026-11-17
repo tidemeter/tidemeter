@@ -137,6 +137,7 @@ const MAX_CUSTOM_VALUE_LEN = 1024;
 
 const customDataSchema = z
   .record(
+    z.string(),
     z.union([
       z.string().max(MAX_CUSTOM_VALUE_LEN),
       z.number().finite(),

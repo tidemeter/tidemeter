@@ -1,6 +1,6 @@
 # AGENTS.md — @tidemeter/web
 
-> Next.js 16.2 + PayloadCMS 3 web application for TideMeter analytics.
+> Next.js 16.4 + PayloadCMS 3 web application for TideMeter analytics.
 
 ## Quick Reference
 
@@ -162,14 +162,14 @@ There is **no database connection at build time** (GitHub CI builds without a DB
 
 PayloadCMS auto-pushes schema changes on startup — it compares collection definitions against the actual database and applies DDL. For most changes (adding/removing fields, new collections) **no migration files are needed**.
 
-For breaking data migrations (renaming columns, transforming existing data):
+To generate a production schema migration:
 
 ```bash
 cd apps/web
 npx payload migrate:create   # generates a migration file in src/migrations/
 ```
 
-Commit the migration file. PayloadCMS auto-runs pending migrations on next startup.
+Commit the migration, its `.json` snapshot, regenerated `index.ts`, and regenerated `payload-types.ts`. PayloadCMS runs pending migrations during runtime initialization.
 
 ### Analytics schema changes
 
