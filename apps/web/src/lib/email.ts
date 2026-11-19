@@ -31,6 +31,7 @@ export function buildEmailAdapter() {
   const port = Number(process.env.SMTP_PORT ?? 587);
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASSWORD;
+  const servername = process.env.SMTP_TLS_SERVERNAME;
   // Default `secure` to true on port 465 (implicit TLS), otherwise false
   // (STARTTLS is negotiated by Nodemailer when the server advertises it).
   const secure =
@@ -45,6 +46,7 @@ export function buildEmailAdapter() {
       host,
       port,
       secure,
+      ...(servername && { tls: { servername }, requireTLS: !secure }),
       auth: user && pass ? { user, pass } : undefined,
     },
   });

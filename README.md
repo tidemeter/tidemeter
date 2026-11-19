@@ -206,6 +206,7 @@ All configuration is done through environment variables. For Docker Compose, cop
 | `DEMO_MODE`                   | Seed `demo@demo.com` user, sample website, events, and funnels | `false`                                                     |
 | `RESEND_API_KEY`              | Resend API key — if set, email is sent via Resend HTTP API     | —                                                           |
 | `SMTP_HOST`                   | SMTP server for password reset / verification email (optional) | —                                                           |
+| `SMTP_TLS_SERVERNAME`         | TLS certificate hostname when SMTP_HOST uses internal DNS      | SMTP host                                                   |
 | `SMTP_PORT`                   | SMTP server port                                               | `587`                                                       |
 | `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials                                               | —                                                           |
 | `SMTP_FROM_ADDRESS`           | From address for outgoing email                                | `no-reply@localhost`                                        |
