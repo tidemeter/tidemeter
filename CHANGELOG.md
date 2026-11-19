@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.21](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.20...tidemeter-v0.1.21) (2026-11-19)
+
+
+### Bug Fixes
+
+* provide env var for setting tls for mailserver ([b9fcfeb](https://github.com/tidemeter/tidemeter/commit/b9fcfebc3a24182880d9cc2f17242461850da05c))
+
 ## [0.1.20](https://github.com/tidemeter/tidemeter/compare/tidemeter-v0.1.19...tidemeter-v0.1.20) (2026-11-17)
 
 
